@@ -3,9 +3,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { ArrowLeft, Eye, EyeOff, Loader2, Shield } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  Shield,
+} from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
 import { backend } from "../backendActor";
 import { hashPassword, saveSession } from "../utils/auth";
 
@@ -17,6 +23,7 @@ export default function AuthPage() {
   const [tab, setTab] = useState<"register" | "login">(defaultTab);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
 
   const [regNickname, setRegNickname] = useState("");
   const [regPassword, setRegPassword] = useState("");
@@ -27,16 +34,17 @@ export default function AuthPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     if (!regNickname.trim()) {
-      toast.error("Bitte geben Sie einen Nicknamen ein.");
+      setError("Bitte geben Sie einen Nicknamen ein.");
       return;
     }
     if (regPassword.length < 6) {
-      toast.error("Das Passwort muss mindestens 6 Zeichen lang sein.");
+      setError("Das Passwort muss mindestens 6 Zeichen lang sein.");
       return;
     }
     if (regPassword !== regConfirm) {
-      toast.error("Die Passwörter stimmen nicht überein.");
+      setError("Die Passwörter stimmen nicht überein.");
       return;
     }
     setLoading(true);
@@ -44,28 +52,29 @@ export default function AuthPage() {
       const hash = await hashPassword(regPassword);
       const result = await backend.register(regNickname.trim(), hash);
       if (result.__kind__ === "error") {
-        toast.error(result.error);
+        setError(result.error);
+        setLoading(false);
         return;
       }
       const loginResult = await backend.login(regNickname.trim(), hash);
       if (loginResult.__kind__ === "error") {
-        toast.error(loginResult.error);
+        setError(loginResult.error);
+        setLoading(false);
         return;
       }
       saveSession({ token: loginResult.ok, nickname: regNickname.trim() });
-      toast.success("Konto erstellt! Willkommen bei SDR.");
-      navigate({ to: "/welcome" });
+      window.location.replace("/welcome");
     } catch {
-      toast.error("Ein Fehler ist aufgetreten. Bitte erneut versuchen.");
-    } finally {
+      setError("Ein Fehler ist aufgetreten. Bitte erneut versuchen.");
       setLoading(false);
     }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     if (!loginNickname.trim() || !loginPassword) {
-      toast.error("Bitte alle Felder ausfüllen.");
+      setError("Bitte alle Felder ausfüllen.");
       return;
     }
     setLoading(true);
@@ -73,15 +82,14 @@ export default function AuthPage() {
       const hash = await hashPassword(loginPassword);
       const result = await backend.login(loginNickname.trim(), hash);
       if (result.__kind__ === "error") {
-        toast.error("Ungültiger Benutzername oder Passwort.");
+        setError("Ungültiger Benutzername oder Passwort.");
+        setLoading(false);
         return;
       }
       saveSession({ token: result.ok, nickname: loginNickname.trim() });
-      toast.success(`Willkommen zurück, ${loginNickname.trim()}!`);
-      navigate({ to: "/welcome" });
+      window.location.replace("/welcome");
     } catch {
-      toast.error("Ein Fehler ist aufgetreten. Bitte erneut versuchen.");
-    } finally {
+      setError("Ein Fehler ist aufgetreten. Bitte erneut versuchen.");
       setLoading(false);
     }
   };
@@ -183,9 +191,31 @@ export default function AuthPage() {
             </h1>
           </div>
 
+          {/* Inline error message - no portal, no conflict */}
+          {error && (
+            <div
+              className="flex items-start gap-3 rounded-xl px-4 py-3 mb-5"
+              style={{
+                background: "oklch(0.35 0.12 25 / 0.2)",
+                border: "1px solid oklch(0.55 0.18 25 / 0.5)",
+              }}
+            >
+              <AlertCircle
+                className="w-5 h-5 mt-0.5 flex-shrink-0"
+                style={{ color: "oklch(0.72 0.18 25)" }}
+              />
+              <p className="text-sm" style={{ color: "oklch(0.88 0.06 25)" }}>
+                {error}
+              </p>
+            </div>
+          )}
+
           <Tabs
             value={tab}
-            onValueChange={(v) => setTab(v as "register" | "login")}
+            onValueChange={(v) => {
+              setError("");
+              setTab(v as "register" | "login");
+            }}
           >
             <TabsList
               className="grid grid-cols-2 w-full mb-6"

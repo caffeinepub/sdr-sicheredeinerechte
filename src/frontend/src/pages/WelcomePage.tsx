@@ -1,8 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Home, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect } from "react";
-import { toast } from "sonner";
 import { getSession } from "../utils/auth";
 
 export default function WelcomePage() {
@@ -29,7 +28,7 @@ export default function WelcomePage() {
           backdropFilter: "blur(12px)",
         }}
       >
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center">
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -58,31 +57,6 @@ export default function WelcomePage() {
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate({ to: "/app" })}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-base font-medium transition-all"
-            style={{
-              color: "oklch(0.73 0.03 235)",
-              border: "1px solid oklch(0.27 0.055 248)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "oklch(0.96 0.015 230)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "oklch(0.72 0.13 218 / 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "oklch(0.73 0.03 235)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "oklch(0.27 0.055 248)";
-            }}
-            data-ocid="welcome.home.button"
-          >
-            <Home className="w-4 h-4" />
-            Zum Bereich
-          </button>
         </div>
       </header>
 
@@ -198,7 +172,7 @@ export default function WelcomePage() {
             </button>
             <button
               type="button"
-              onClick={() => toast.info("Demnächst verfügbar")}
+              onClick={() => navigate({ to: "/app" })}
               className="flex-1 py-5 px-8 rounded-xl text-lg font-bold transition-all"
               style={{
                 background: "oklch(0.62 0.22 25)",

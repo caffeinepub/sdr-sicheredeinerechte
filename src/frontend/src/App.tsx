@@ -7,6 +7,7 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import AdminPage from "./pages/AdminPage";
+import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import FragenPage from "./pages/FragenPage";
 import LandingPage from "./pages/LandingPage";
@@ -25,6 +26,15 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: LandingPage,
+});
+
+const authRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth",
+  component: AuthPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+  }),
 });
 
 const appRoute = createRoute({
@@ -53,6 +63,7 @@ const fragenRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
+  authRoute,
   appRoute,
   adminRoute,
   welcomeRoute,

@@ -1,46 +1,21 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronRight, FileCheck, Lock, Scale, Shield } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { backend } from "../backendActor";
-import AuthModal from "../components/AuthModal";
 import { getSession } from "../utils/auth";
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authTab, setAuthTab] = useState<"register" | "login">("register");
 
   useEffect(() => {
-    // Redirect if already logged in
     const session = getSession();
     if (session) {
       navigate({ to: "/app" });
       return;
     }
-    // Increment visitor count
     backend.incrementVisitorCount().catch(() => null);
   }, [navigate]);
-
-  const openRegister = () => {
-    setAuthTab("register");
-    setAuthOpen(true);
-  };
-
-  const openLogin = () => {
-    setAuthTab("login");
-    setAuthOpen(true);
-  };
-
-  const handleAuthSuccess = () => {
-    setAuthOpen(false);
-    setTimeout(() => navigate({ to: "/app" }), 80);
-  };
-
-  const handleRegisterSuccess = () => {
-    setAuthOpen(false);
-    setTimeout(() => navigate({ to: "/welcome" }), 80);
-  };
 
   return (
     <div
@@ -91,7 +66,9 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={openLogin}
+              onClick={() =>
+                navigate({ to: "/auth", search: { tab: "login" } })
+              }
               className="hidden sm:inline-flex items-center px-4 py-2 rounded-lg text-base font-medium transition-all"
               style={{
                 color: "oklch(0.72 0.13 218)",
@@ -111,7 +88,9 @@ export default function LandingPage() {
             </button>
             <button
               type="button"
-              onClick={openRegister}
+              onClick={() =>
+                navigate({ to: "/auth", search: { tab: "register" } })
+              }
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-base font-semibold transition-all"
               style={{
                 background: "oklch(0.72 0.13 218)",
@@ -241,8 +220,10 @@ export default function LandingPage() {
             >
               <button
                 type="button"
-                onClick={openRegister}
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold transition-all shadow-cyan-glow"
+                onClick={() =>
+                  navigate({ to: "/auth", search: { tab: "register" } })
+                }
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold transition-all"
                 style={{
                   background: "oklch(0.72 0.13 218)",
                   color: "oklch(0.135 0.025 248)",
@@ -268,7 +249,9 @@ export default function LandingPage() {
               </button>
               <button
                 type="button"
-                onClick={openLogin}
+                onClick={() =>
+                  navigate({ to: "/auth", search: { tab: "login" } })
+                }
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-medium transition-all"
                 style={{
                   color: "oklch(0.73 0.03 235)",
@@ -398,14 +381,6 @@ export default function LandingPage() {
           </p>
         </div>
       </footer>
-
-      <AuthModal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        onSuccess={handleAuthSuccess}
-        onRegisterSuccess={handleRegisterSuccess}
-        defaultTab={authTab}
-      />
     </div>
   );
 }

@@ -18,13 +18,72 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import type { CryptoAddress, PaymentRequest } from "../backend.d";
+import { SiBitcoin, SiEthereum, SiSolana } from "react-icons/si";
+import type { PaymentRequest } from "../backend.d";
 import { backend } from "../backendActor";
 import { getSession } from "../utils/auth";
 
+const HARDCODED_ADDRESSES = [
+  {
+    currency: "ICP",
+    name: "Internet Computer",
+    address: "3pno5-fmoey-3jsyu-6p5qb-6egd7-zg445-sfdtc-3cpzh-qn5sh-wcgx6-cae",
+    color: "oklch(0.72 0.13 218)",
+    symbol: "∞",
+  },
+  {
+    currency: "BTC",
+    name: "Bitcoin",
+    address: "bc1qzt9eeuh35jc9746z0jk73dmj77gd5sp6fuc9wd",
+    color: "oklch(0.75 0.16 55)",
+    symbol: "₿",
+  },
+  {
+    currency: "ETH",
+    name: "Ethereum",
+    address: "0x3c2726B86B4BB25Eb39Cd58636b8f8f6a5286ae3",
+    color: "oklch(0.72 0.13 280)",
+    symbol: "Ξ",
+  },
+  {
+    currency: "XRP",
+    name: "XRP",
+    address: "rNxb49FgcRQVDjioZ6Jfk6vky5ViByNkW9",
+    color: "oklch(0.70 0.12 230)",
+    symbol: "✕",
+  },
+  {
+    currency: "SOL",
+    name: "Solana",
+    address: "kjFvmwSexVSufg4wu859rY7SuiqeoThQzPamPef2QLR",
+    color: "oklch(0.72 0.15 310)",
+    symbol: "◎",
+  },
+];
+
+function CurrencyIcon({
+  currency,
+  color,
+  symbol,
+}: {
+  currency: string;
+  color: string;
+  symbol: string;
+}) {
+  const iconStyle = { color, fontSize: "2rem" };
+  if (currency === "BTC") return <SiBitcoin style={iconStyle} />;
+  if (currency === "ETH") return <SiEthereum style={iconStyle} />;
+  if (currency === "SOL") return <SiSolana style={iconStyle} />;
+  // ICP and XRP: styled text badge
+  return (
+    <span className="text-3xl font-bold leading-none" style={{ color }}>
+      {symbol}
+    </span>
+  );
+}
+
 export default function ZahlungPage() {
   const [nickname, setNickname] = useState("");
-  const [addresses, setAddresses] = useState<CryptoAddress[]>([]);
   const [paymentStatus, setPaymentStatus] = useState<PaymentRequest | null>(
     null,
   );
@@ -43,12 +102,9 @@ export default function ZahlungPage() {
       return;
     }
     setNickname(session.nickname);
-    Promise.all([
-      backend.getCryptoAddresses(),
-      backend.getMyPaymentStatus(session.nickname),
-    ])
-      .then(([addrs, status]) => {
-        setAddresses(addrs);
+    backend
+      .getMyPaymentStatus(session.nickname)
+      .then((status) => {
         setPaymentStatus(status);
       })
       .finally(() => setLoadingData(false));
@@ -105,17 +161,6 @@ export default function ZahlungPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const currencyIcons: Record<string, string> = {
-    BTC: "₿",
-    ETH: "Ξ",
-    XMR: "ɱ",
-  };
-  const currencyColors: Record<string, string> = {
-    BTC: "oklch(0.75 0.16 55)",
-    ETH: "oklch(0.72 0.13 280)",
-    XMR: "oklch(0.7 0.18 38)",
   };
 
   if (loadingData) {
@@ -312,105 +357,92 @@ export default function ZahlungPage() {
             </motion.div>
           )}
 
-          {/* Crypto Addresses */}
-          {addresses.length > 0 ? (
-            <div className="space-y-5 mb-10">
-              {addresses.map((addr) => (
-                <motion.div
-                  key={addr.currency}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="p-6 rounded-2xl"
+          {/* Hardcoded Crypto Addresses */}
+          <div className="space-y-5 mb-10">
+            {HARDCODED_ADDRESSES.map((addr, idx) => (
+              <motion.div
+                key={addr.currency}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: idx * 0.07 }}
+                className="p-6 rounded-2xl"
+                style={{
+                  background: "oklch(0.17 0.03 248)",
+                  border: `1px solid ${addr.color}40`,
+                }}
+                data-ocid={`zahlung.crypto.card.${idx + 1}` as string}
+              >
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-4">
+                  <CurrencyIcon
+                    currency={addr.currency}
+                    color={addr.color}
+                    symbol={addr.symbol}
+                  />
+                  <p
+                    className="font-bold text-xl"
+                    style={{ color: "oklch(0.96 0.015 230)" }}
+                  >
+                    {addr.name}{" "}
+                    <span
+                      className="text-base font-semibold"
+                      style={{ color: addr.color }}
+                    >
+                      ({addr.currency})
+                    </span>
+                  </p>
+                </div>
+
+                {/* Address + Copy */}
+                <div
+                  className="flex items-center gap-2 p-3 rounded-xl mb-4"
                   style={{
-                    background: "oklch(0.17 0.03 248)",
+                    background: "oklch(0.13 0.025 248)",
                     border: "1px solid oklch(0.27 0.055 248)",
                   }}
-                  data-ocid="zahlung.crypto.card"
                 >
-                  <div className="flex items-center gap-3 mb-4">
-                    <span
-                      className="text-3xl font-bold"
-                      style={{
-                        color:
-                          currencyColors[addr.currency] ??
-                          "oklch(0.72 0.13 218)",
-                      }}
-                    >
-                      {currencyIcons[addr.currency] ?? "💎"}
-                    </span>
-                    <div>
-                      <p
-                        className="font-bold text-xl"
-                        style={{ color: "oklch(0.96 0.015 230)" }}
-                      >
-                        {addr.currency}
-                      </p>
-                      <p
-                        className="text-base font-semibold"
-                        style={{
-                          color:
-                            currencyColors[addr.currency] ??
-                            "oklch(0.72 0.13 218)",
-                        }}
-                      >
-                        Betrag: {addr.amount} {addr.currency}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="flex items-center gap-2 p-3 rounded-xl"
-                    style={{
-                      background: "oklch(0.13 0.025 248)",
-                      border: "1px solid oklch(0.27 0.055 248)",
-                    }}
+                  <code
+                    className="flex-1 text-sm break-all font-mono"
+                    style={{ color: "oklch(0.82 0.06 225)" }}
                   >
-                    <code
-                      className="flex-1 text-sm break-all font-mono"
-                      style={{ color: "oklch(0.82 0.06 225)" }}
-                    >
-                      {addr.address}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(addr.address)}
-                      className="flex-shrink-0 p-2 rounded-lg transition-all flex items-center gap-1.5 text-sm font-medium"
-                      style={{
-                        background:
-                          copiedAddress === addr.address
-                            ? "oklch(0.55 0.15 145 / 0.15)"
-                            : "oklch(0.72 0.13 218 / 0.1)",
-                        color:
-                          copiedAddress === addr.address
-                            ? "oklch(0.55 0.15 145)"
-                            : "oklch(0.72 0.13 218)",
-                        border: "1px solid oklch(0.72 0.13 218 / 0.2)",
-                      }}
-                      data-ocid="zahlung.copy.button"
-                    >
-                      <Copy className="w-4 h-4" />
-                      {copiedAddress === addr.address
-                        ? "Kopiert ✓"
-                        : "Kopieren"}
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          ) : (
-            <div
-              className="p-6 rounded-2xl mb-10 text-center"
-              style={{
-                background: "oklch(0.17 0.03 248)",
-                border: "1px solid oklch(0.27 0.055 248)",
-              }}
-              data-ocid="zahlung.addresses.empty_state"
-            >
-              <p className="text-lg" style={{ color: "oklch(0.73 0.03 235)" }}>
-                Zahlungsadressen werden vom Administrator hinterlegt. Bitte
-                schauen Sie später wieder vorbei.
-              </p>
-            </div>
-          )}
+                    {addr.address}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(addr.address)}
+                    className="flex-shrink-0 p-2 rounded-lg transition-all flex items-center gap-1.5 text-sm font-medium"
+                    style={{
+                      background:
+                        copiedAddress === addr.address
+                          ? "oklch(0.55 0.15 145 / 0.15)"
+                          : "oklch(0.72 0.13 218 / 0.1)",
+                      color:
+                        copiedAddress === addr.address
+                          ? "oklch(0.55 0.15 145)"
+                          : "oklch(0.72 0.13 218)",
+                      border: "1px solid oklch(0.72 0.13 218 / 0.2)",
+                    }}
+                    data-ocid={`zahlung.copy.button.${idx + 1}` as string}
+                  >
+                    <Copy className="w-4 h-4" />
+                    {copiedAddress === addr.address ? "Kopiert ✓" : "Kopieren"}
+                  </button>
+                </div>
+
+                {/* QR Code */}
+                <div className="flex justify-center">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(addr.address)}&bgcolor=1e2a3a&color=a0c4d8`}
+                    alt={`QR-Code für ${addr.currency} Adresse ${addr.address}`}
+                    width={180}
+                    height={180}
+                    className="rounded-xl"
+                    style={{ border: `2px solid ${addr.color}60` }}
+                  />
+                </div>
+              </motion.div>
+            ))}
+          </div>
 
           {/* Payment Proof Form */}
           {(!paymentStatus || paymentStatus.status === "rejected") && (
@@ -466,14 +498,20 @@ export default function ZahlungPage() {
                         border: "1px solid oklch(0.27 0.055 248)",
                       }}
                     >
+                      <SelectItem value="ICP" className="text-base">
+                        ∞ ICP
+                      </SelectItem>
                       <SelectItem value="BTC" className="text-base">
                         ₿ Bitcoin (BTC)
                       </SelectItem>
                       <SelectItem value="ETH" className="text-base">
                         Ξ Ethereum (ETH)
                       </SelectItem>
-                      <SelectItem value="XMR" className="text-base">
-                        ɱ Monero (XMR)
+                      <SelectItem value="XRP" className="text-base">
+                        ✕ XRP
+                      </SelectItem>
+                      <SelectItem value="SOL" className="text-base">
+                        ◎ Solana (SOL)
                       </SelectItem>
                     </SelectContent>
                   </Select>

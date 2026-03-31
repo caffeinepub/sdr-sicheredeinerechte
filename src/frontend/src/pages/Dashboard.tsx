@@ -251,31 +251,42 @@ export default function Dashboard() {
                 className="font-bold text-2xl mb-3"
                 style={{ color: "oklch(0.96 0.015 230)" }}
               >
-                Musterschreiben kaufen
+                Musterschreiben / administrative Prozesse kaufen
               </h2>
               <p
                 className="text-base leading-relaxed mb-2"
                 style={{ color: "oklch(0.73 0.03 235)" }}
               >
-                Erhalten Sie sofortigen Zugang zu professionellen
-                Musterschreiben für den Umgang mit Behörden, Ämtern und
-                Gerichten. Unsere Vorlagen helfen Ihnen, Ihre Rechte wirksam zu
-                vertreten.
+                Erhalten Sie Zugang zu professionellen Musterschreiben und
+                administrativen Prozessen für den Umgang mit sogenannten
+                Behörden, Ämtern oder Gerichten. Unsere Vorlagen helfen Ihnen,
+                Ihre Rechte zu wahren.
               </p>
               <ul
-                className="text-base mb-5 space-y-1"
+                className="text-base mb-5 space-y-2"
                 style={{ color: "oklch(0.73 0.03 235)" }}
               >
-                <li>✓ Widerspruch gegen Behördenbescheid</li>
-                <li>✓ Anforderung von Amtsstempel und Unterschrift</li>
-                <li>✓ Auskunftsbegehren nach Datenschutz</li>
-                <li>✓ Weitere Vorlagen folgen laufend</li>
+                <li>
+                  ✓ Zurückweisung von mangelhaften Behörden-, Amts- oder
+                  Gerichtsschreiben (sogenannte Beschlüsse, Bescheide, Urteile,
+                  Zahlungsaufforderungen etc.)
+                </li>
+                <li>
+                  ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
+                  Forderung (sogenannte Bußgelder, Steuern etc.) unter Vorbehalt
+                  der Rechtmäßigkeit.
+                </li>
+                <li>
+                  ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
+                  Forderung (sogenannte Bußgelder, Steuern etc.) unter Vorbehalt
+                  der Rechtmäßigkeit in Verbindung mit einem Gegenangebot.
+                </li>
               </ul>
               <p
                 className="text-sm mb-5"
                 style={{ color: "oklch(0.55 0.02 235)" }}
               >
-                Bezahlung sicher per Kryptowährung (BTC, ETH, XMR).
+                Bezahlung sicher per Kryptowährung (ICP, BTC, ETH, XRP, SOL).
               </p>
               <button
                 type="button"
@@ -286,7 +297,7 @@ export default function Dashboard() {
                 style={{ background: "oklch(0.62 0.22 25)", color: "#fff" }}
                 data-ocid="dashboard.buy_musterschreiben.button"
               >
-                Jetzt Musterschreiben kaufen →
+                Jetzt Zugang zu professionellen Musterschreiben kaufen →
               </button>
             </div>
           )}

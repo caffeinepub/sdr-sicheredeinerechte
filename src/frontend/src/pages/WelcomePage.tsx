@@ -147,6 +147,31 @@ export default function WelcomePage() {
           <div className="flex flex-col sm:flex-row gap-4">
             <button
               type="button"
+              onClick={() => navigate({ to: "/haeufige-fragen" })}
+              className="flex-1 py-5 px-8 rounded-xl text-lg font-bold transition-all"
+              style={{
+                background: "oklch(0.72 0.13 218)",
+                color: "oklch(0.135 0.025 248)",
+                boxShadow: "0 0 20px oklch(0.72 0.13 218 / 0.3)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "oklch(0.76 0.13 218)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                  "0 0 28px oklch(0.72 0.13 218 / 0.45)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background =
+                  "oklch(0.72 0.13 218)";
+                (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                  "0 0 20px oklch(0.72 0.13 218 / 0.3)";
+              }}
+              data-ocid="welcome.haeufige_fragen.primary_button"
+            >
+              Häufig gestellte Fragen
+            </button>
+            <button
+              type="button"
               onClick={() => navigate({ to: "/fragen" })}
               className="flex-1 py-5 px-8 rounded-xl text-lg font-bold transition-all"
               style={{
@@ -224,8 +249,8 @@ export default function WelcomePage() {
             </span>
           </div>
           <p className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
-            © {new Date().getFullYear()} SichereDeineRechte. Auf dem Internet
-            Computer.
+            © {new Date().getFullYear()} SichereDeineRechte. Alle Rechte
+            vorbehalten.
           </p>
           <p className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
             Built with love using{" "}

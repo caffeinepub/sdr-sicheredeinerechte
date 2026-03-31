@@ -365,8 +365,8 @@ export default function LandingPage() {
             </span>
           </div>
           <p className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
-            © {new Date().getFullYear()} SichereDeineRechte. Auf dem Internet
-            Computer.
+            © {new Date().getFullYear()} SichereDeineRechte. Alle Rechte
+            vorbehalten.
           </p>
           <p className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
             Built with love using{" "}

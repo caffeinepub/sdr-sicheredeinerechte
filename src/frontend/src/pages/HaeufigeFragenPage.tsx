@@ -1,30 +1,80 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Shield } from "lucide-react";
+import { ArrowLeft, ChevronDown, Shield } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect } from "react";
-import { getSession } from "../utils/auth";
+import { useState } from "react";
 
-const fragenList = [
-  "Mit einer Paraphe versehen wurde?",
-  "Mit \u201eIm Auftrag\u201c und der Unterschrift einer Person versehen wurde, ohne den Auftraggeber (Verantwortlichen) namentlich zu benennen und ohne den vollst\u00e4ndigen Namen der unterzeichnenden Person (mit Vor- und Nachnamen) zu erkennen?",
-  "Mit einem Amts-, Beh\u00f6rden- oder Gerichtsstempel versehen wurde?",
-  "Den Hinweis \u201eDieses Schreiben ist maschinell erstellt und ohne Unterschrift g\u00fcltig\u201c enth\u00e4lt?",
-  "Den Hinweis \u201eDieses Schreiben wurde maschinell erstellt. Es ist auch ohne Namenswiedergabe und Unterschrift g\u00fcltig\u201c enth\u00e4lt?",
-  "Den Hinweis \u201eDieses Schreiben wurde maschinell erstellt und ist daher nicht unterschrieben\u201c enth\u00e4lt?",
-  "Den Hinweis \u201eDieses Schreiben wurde maschinell erstellt und ist daher ohne Unterschrift g\u00fcltig\u201c enth\u00e4lt?",
-  "Mit einer oder mehreren \u201eFour Corners Rule\u201c (Vier-Ecken-Regel) versehen wurde?",
-  "In einem Fensterbriefumschlag ohne Briefmarke (Wertmarke) zugestellt wurde?",
+const faqItems = [
+  {
+    frage: "Kaufe ich hier eine Dienstleistung?",
+    antwort:
+      "Nein. Sie kaufen keine Dienstleistung. Es kommt kein Dienst- oder Werkvertrag zustande. Ihr Ausgleich für Vorlagen / administrative Prozesse ist ein solidarischer Kostenanteil zur Finanzierung einer kollektiven, dezentralen und zensurresistenten Infrastruktur.",
+  },
+  {
+    frage: "Erhalte ich individuelle Rechtsberatung oder Vertretung?",
+    antwort:
+      "Nein. SDR - SichereDeineRechte erbringt keine individuelle Rechtsberatung, keine Einzelfallprüfung und keine anwaltliche Vertretung. Zur Verfügung gestellt werden standardisierte Vorlagen, Informationen und Abläufe, die von den Anwender eigenverantwortlich genutzt werden.",
+  },
+  {
+    frage: "Was bekomme ich konkret für meinen Ausgleich?",
+    antwort: (
+      <>
+        <p className="mb-3">Sie erhalten Zugang zu:</p>
+        <ul className="space-y-2">
+          <li>
+            • standardisierten Schreiben, Vorlagen und administrative Prozesse,
+          </li>
+          <li>• Informationen zur koordinierten Vorgehensweise,</li>
+          <li>
+            • einer technischen, organisatorischen, dezentralen und
+            zensurresistenten Infrastruktur.
+          </li>
+        </ul>
+        <p className="mt-3">
+          Dies stellt keine Einzelleistung, sondern eine gemeinschaftliche
+          Ressource dar.
+        </p>
+      </>
+    ),
+  },
+  {
+    frage: "Gibt es ein Erfolgsversprechen?",
+    antwort:
+      "Nein. Es gibt keine Erfolgsgarantie für den Einzelfall. Ziel ist eine systemische Wirkung durch Masse gleichgelagerter Anwendung, nicht der garantierte Erfolg eines Einzelnen.",
+  },
+  {
+    frage: "Was passiert mit meinem Ausgleich?",
+    antwort: (
+      <>
+        <p className="mb-3">Der Ausgleich dient der Finanzierung von:</p>
+        <ul className="space-y-2">
+          <li>• technischer Infrastruktur,</li>
+          <li>• Pflege und Weiterentwicklung der Vorlagen,</li>
+          <li>• Koordination und Kommunikation,</li>
+          <li>• Betrieb der dezentralen und zensurresistenten Plattform.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    frage:
+      "Ist SDR – SichereDeineRechte eine Rechtsanwaltskanzlei oder ein Inkassodienst?",
+    antwort:
+      "Nein. SDR – SichereDeineRechte ist keine Rechtsanwaltskanzlei, kein Inkassodienst und kein Rechtsdienstleister im Sinne des RDG.",
+  },
+  {
+    frage: "Sind meine Daten sicher?",
+    antwort:
+      "Ja, Ihre Daten sind bei uns sicher und werden nicht an Dritte weitergeben.",
+  },
 ];
 
-export default function FragenPage() {
+export default function HaeufigeFragenPage() {
   const navigate = useNavigate();
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    const session = getSession();
-    if (!session) {
-      navigate({ to: "/" });
-    }
-  }, [navigate]);
+  const toggle = (i: number) => {
+    setOpenIndex(openIndex === i ? null : i);
+  };
 
   return (
     <div
@@ -88,7 +138,6 @@ export default function FragenPage() {
               (e.currentTarget as HTMLButtonElement).style.borderColor =
                 "oklch(0.27 0.055 248)";
             }}
-            data-ocid="fragen.back.button"
           >
             <ArrowLeft className="w-4 h-4" />
             Zurück
@@ -108,9 +157,9 @@ export default function FragenPage() {
               background: "oklch(0.17 0.03 248)",
               border: "1px solid oklch(0.27 0.055 248)",
             }}
-            data-ocid="fragen.panel"
           >
-            <div className="flex items-center gap-4 mb-8">
+            {/* Branding */}
+            <div className="flex items-center gap-4 mb-10">
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
                 style={{
@@ -139,73 +188,69 @@ export default function FragenPage() {
               </div>
             </div>
 
-            <div
-              className="space-y-6 mb-10"
-              style={{ color: "oklch(0.85 0.02 235)" }}
+            <h1
+              className="font-display font-bold text-3xl sm:text-4xl leading-tight mb-10"
+              style={{ color: "oklch(0.72 0.13 218)" }}
             >
-              <p className="text-lg sm:text-xl leading-relaxed">
-                Haben Sie sich schon einmal gefragt, wie beispielsweise
-                sogenannte behördliche Schreiben oder Forderungen von
-                Institutionen der sogenannten &bdquo;Bundesrepublik
-                Deutschland&ldquo; rechtsverbindlich sein können?
-              </p>
-              <p className="text-lg sm:text-xl leading-relaxed">
-                Können behördliche oder amtliche (hoheitliche) Schreiben und
-                Forderungen überhaupt ohne die Unterschrift einer hoheitlich
-                befugten Person in Verbindung mit einem Amts-, Behörden- oder
-                Gerichtssiegel rechtsverbindlich sein?
-              </p>
-              <p
-                className="text-lg sm:text-xl leading-relaxed font-semibold"
-                style={{ color: "oklch(0.96 0.015 230)" }}
-              >
-                Ist ein behördliches oder amtliches (hoheitliches) Schreiben
-                rechtsverbindlich, wenn es:
-              </p>
-              <ol className="space-y-4 list-none" data-ocid="fragen.list">
-                {fragenList.map((item, i) => (
-                  <motion.li
-                    key={item.slice(0, 20)}
-                    initial={{ opacity: 0, x: -12 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 0.1 + i * 0.05 }}
-                    className="flex gap-4 text-lg sm:text-xl leading-relaxed"
-                    data-ocid={`fragen.item.${i + 1}`}
+              Häufig gestellte Fragen
+            </h1>
+
+            {/* Accordion */}
+            <div className="space-y-3">
+              {faqItems.map((item, i) => (
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static list
+                  key={i}
+                  className="rounded-xl overflow-hidden"
+                  style={{
+                    border:
+                      openIndex === i
+                        ? "1px solid oklch(0.72 0.13 218 / 0.4)"
+                        : "1px solid oklch(0.27 0.055 248)",
+                    background: "oklch(0.135 0.025 248)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggle(i)}
+                    className="w-full flex items-center justify-between gap-4 px-6 py-5 text-left transition-all"
+                    style={{
+                      background:
+                        openIndex === i
+                          ? "oklch(0.72 0.13 218 / 0.08)"
+                          : "transparent",
+                    }}
                   >
                     <span
-                      className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mt-0.5"
-                      style={{
-                        background: "oklch(0.72 0.13 218 / 0.15)",
-                        border: "1px solid oklch(0.72 0.13 218 / 0.3)",
-                        color: "oklch(0.72 0.13 218)",
-                      }}
+                      className="font-bold text-lg sm:text-xl leading-snug"
+                      style={{ color: "oklch(0.96 0.015 230)" }}
                     >
-                      {i + 1}
+                      {item.frage}
                     </span>
-                    <span>{item}</span>
-                  </motion.li>
-                ))}
-              </ol>
+                    <ChevronDown
+                      className="w-5 h-5 flex-shrink-0 transition-transform duration-300"
+                      style={{
+                        color: "oklch(0.72 0.13 218)",
+                        transform:
+                          openIndex === i ? "rotate(180deg)" : "rotate(0deg)",
+                      }}
+                    />
+                  </button>
+                  {openIndex === i && (
+                    <div
+                      className="px-6 pb-6 text-lg leading-relaxed"
+                      style={{ color: "oklch(0.85 0.02 235)" }}
+                    >
+                      {typeof item.antwort === "string" ? (
+                        <p>{item.antwort}</p>
+                      ) : (
+                        item.antwort
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.7 }}
-              className="rounded-xl px-8 py-6 text-center"
-              style={{
-                background: "oklch(0.72 0.13 218 / 0.1)",
-                border: "2px solid oklch(0.72 0.13 218 / 0.4)",
-              }}
-              data-ocid="fragen.conclusion.panel"
-            >
-              <p
-                className="text-3xl sm:text-4xl font-display font-bold"
-                style={{ color: "oklch(0.72 0.13 218)" }}
-              >
-                Die Antwort lautet NEIN!
-              </p>
-            </motion.div>
           </div>
         </motion.div>
       </main>

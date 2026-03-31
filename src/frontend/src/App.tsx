@@ -9,6 +9,7 @@ import AdminPage from "./pages/AdminPage";
 import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import FragenPage from "./pages/FragenPage";
+import HaeufigeFragenPage from "./pages/HaeufigeFragenPage";
 import LandingPage from "./pages/LandingPage";
 import MusterschreibenPage from "./pages/MusterschreibenPage";
 import WelcomePage from "./pages/WelcomePage";
@@ -69,6 +70,12 @@ const musterschreibenRoute = createRoute({
   component: MusterschreibenPage,
 });
 
+const haeufigeFragenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/haeufige-fragen",
+  component: HaeufigeFragenPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   authRoute,
@@ -78,6 +85,7 @@ const routeTree = rootRoute.addChildren([
   fragenRoute,
   zahlungRoute,
   musterschreibenRoute,
+  haeufigeFragenRoute,
 ]);
 
 const router = createRouter({ routeTree });

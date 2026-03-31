@@ -358,8 +358,8 @@ export default function Dashboard() {
       >
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
-            © {new Date().getFullYear()} SichereDeineRechte. Auf dem Internet
-            Computer. Built with love using{" "}
+            © {new Date().getFullYear()} SichereDeineRechte. Alle Rechte
+            vorbehalten. Built with love using{" "}
             <a
               href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
               target="_blank"

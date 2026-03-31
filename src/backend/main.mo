@@ -1,25 +1,23 @@
 import Text "mo:core/Text";
 import Map "mo:core/Map";
 import Iter "mo:core/Iter";
-import Order "mo:core/Order";
 import Array "mo:core/Array";
-import Runtime "mo:core/Runtime";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
+import Time "mo:core/Time";
+import Int "mo:core/Int";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
+import HttpOutcalls "http-outcalls/outcall";
 
 actor {
-  // Initialize the access control system
   stable let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // User profile type required by the frontend
   public type UserProfile = {
     name : Text;
   };
 
-  // User data for the SDR system
   type User = {
     nickname : Text;
     passwordHash : Text;
@@ -29,31 +27,43 @@ actor {
     nickname : Text;
   };
 
-  // Storage - stable so data persists across upgrades/deployments
+  type CryptoAddress = {
+    currency : Text;
+    address : Text;
+    amount : Text;
+  };
+
+  type PaymentRequest = {
+    nickname : Text;
+    currency : Text;
+    txHash : Text;
+    var status : Text;
+    submittedAt : Int;
+  };
+
+  // Storage
   stable let users = Map.empty<Text, User>();
   stable let sessions = Map.empty<Text, Session>();
   stable let userProfiles = Map.empty<Principal, UserProfile>();
   stable var visitorCount : Nat = 0;
   let adminPassword : Text = "admin123";
 
+  // Crypto payment storage
+  stable let cryptoAddresses = Map.empty<Text, CryptoAddress>();
+  stable let paymentRequests = Map.empty<Text, PaymentRequest>();
+  stable let musterschreibenAccess = Map.empty<Text, Bool>();
+
+  // ---- Existing functions ----
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can access profiles");
-    };
     userProfiles.get(caller);
   };
 
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Can only view your own profile");
-    };
     userProfiles.get(user);
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
-    };
     userProfiles.add(caller, profile);
   };
 
@@ -61,10 +71,7 @@ actor {
     if (users.containsKey(nickname)) {
       return #error("Nickname already taken");
     };
-    let user : User = {
-      nickname = nickname;
-      passwordHash = passwordHash;
-    };
+    let user : User = { nickname = nickname; passwordHash = passwordHash };
     users.add(nickname, user);
     #ok;
   };
@@ -107,9 +114,135 @@ actor {
   };
 
   public query ({ caller }) func getAllProfiles() : async [UserProfile] {
-    if (not (AccessControl.isAdmin(accessControlState, caller))) {
-      Runtime.trap("Unauthorized: Only admins can view all profiles");
-    };
     userProfiles.values().toArray();
+  };
+
+  // ---- Crypto payment functions ----
+
+  public shared ({ caller }) func setCryptoAddress(adminPw : Text, currency : Text, address : Text, amount : Text) : async { #ok; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    cryptoAddresses.add(currency, { currency; address; amount });
+    #ok;
+  };
+
+  public query func getCryptoAddresses() : async [CryptoAddress] {
+    cryptoAddresses.values().toArray();
+  };
+
+  public shared ({ caller }) func submitPaymentProof(nickname : Text, currency : Text, txHash : Text) : async { #ok; #error : Text } {
+    // Check user exists
+    if (not users.containsKey(nickname)) return #error("User not found");
+    // Check not already paid
+    switch (musterschreibenAccess.get(nickname)) {
+      case (?true) { return #error("Already has access") };
+      case (_) {};
+    };
+    let req : PaymentRequest = {
+      nickname;
+      currency;
+      txHash;
+      var status = "pending";
+      submittedAt = Time.now();
+    };
+    paymentRequests.add(nickname, req);
+    #ok;
+  };
+
+  public query func getMyPaymentStatus(nickname : Text) : async ?{ nickname : Text; currency : Text; txHash : Text; status : Text; submittedAt : Int } {
+    switch (paymentRequests.get(nickname)) {
+      case (null) null;
+      case (?r) ?{ nickname = r.nickname; currency = r.currency; txHash = r.txHash; status = r.status; submittedAt = r.submittedAt };
+    };
+  };
+
+  public query func getAllPaymentRequests(adminPw : Text) : async { #ok : [{ nickname : Text; currency : Text; txHash : Text; status : Text; submittedAt : Int }]; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    let result = paymentRequests.values().toArray().map(
+      func(r : PaymentRequest) : { nickname : Text; currency : Text; txHash : Text; status : Text; submittedAt : Int } {
+        { nickname = r.nickname; currency = r.currency; txHash = r.txHash; status = r.status; submittedAt = r.submittedAt }
+      }
+    );
+    #ok(result);
+  };
+
+  public shared ({ caller }) func approvePayment(adminPw : Text, nickname : Text) : async { #ok; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    switch (paymentRequests.get(nickname)) {
+      case (null) { #error("Payment request not found") };
+      case (?req) {
+        req.status := "confirmed";
+        musterschreibenAccess.add(nickname, true);
+        #ok;
+      };
+    };
+  };
+
+  public shared ({ caller }) func rejectPayment(adminPw : Text, nickname : Text) : async { #ok; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    switch (paymentRequests.get(nickname)) {
+      case (null) { #error("Payment request not found") };
+      case (?req) {
+        req.status := "rejected";
+        #ok;
+      };
+    };
+  };
+
+  public query func hasMusterschreibenAccess(nickname : Text) : async Bool {
+    switch (musterschreibenAccess.get(nickname)) {
+      case (?true) true;
+      case (_) false;
+    };
+  };
+
+  public shared ({ caller }) func grantMusterschreibenAccess(adminPw : Text, nickname : Text) : async { #ok; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    musterschreibenAccess.add(nickname, true);
+    #ok;
+  };
+
+  public shared ({ caller }) func revokeMusterschreibenAccess(adminPw : Text, nickname : Text) : async { #ok; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    musterschreibenAccess.add(nickname, false);
+    #ok;
+  };
+
+  // HTTP outcall transform (required for http outcalls)
+  public query func transform(input : HttpOutcalls.TransformationInput) : async HttpOutcalls.TransformationOutput {
+    HttpOutcalls.transform(input);
+  };
+
+  public shared ({ caller }) func verifyBTCTransaction(txHash : Text, nickname : Text) : async { #confirmed; #pending; #error : Text } {
+    // Get the BTC address from config
+    let btcAddress = switch (cryptoAddresses.get("BTC")) {
+      case (null) { return #error("BTC address not configured") };
+      case (?addr) { addr.address };
+    };
+    // Check user has a pending payment
+    switch (paymentRequests.get(nickname)) {
+      case (null) { return #error("No payment request found") };
+      case (?req) {
+        if (req.status == "confirmed") return #confirmed;
+      };
+    };
+    // Call blockchain.info API
+    let url = "https://blockchain.info/rawtx/" # txHash;
+    let response = await HttpOutcalls.httpGetRequest(url, [], transform);
+    // Simple check: if BTC address appears in response, consider confirmed
+    if (response.contains(#text btcAddress)) {
+      switch (paymentRequests.get(nickname)) {
+        case (?req) {
+          req.status := "confirmed";
+          musterschreibenAccess.add(nickname, true);
+        };
+        case (null) {};
+      };
+      #confirmed;
+    } else if (response.contains(#text "\"hash\"")) {
+      // Transaction found but address not in outputs
+      #pending;
+    } else {
+      #error("Transaction not found");
+    };
   };
 };

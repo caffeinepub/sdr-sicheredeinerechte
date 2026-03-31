@@ -1,29 +1,48 @@
-import { useNavigate } from "@tanstack/react-router";
-import { BookOpen, LogOut, Scale, Shield, Users } from "lucide-react";
+import {
+  BookOpen,
+  CheckCircle,
+  Clock,
+  Loader2,
+  LogOut,
+  Scale,
+  Shield,
+  Users,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { backend } from "../backendActor";
 import { clearSession, getSession } from "../utils/auth";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const [nickname, setNickname] = useState("");
   const [checking, setChecking] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [paymentPending, setPaymentPending] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState(true);
 
   useEffect(() => {
     const session = getSession();
     if (!session) {
-      navigate({ to: "/" });
+      window.location.href = "/";
       return;
     }
     setNickname(session.nickname);
     setChecking(false);
-  }, [navigate]);
+    Promise.all([
+      backend.hasMusterschreibenAccess(session.nickname),
+      backend.getMyPaymentStatus(session.nickname),
+    ])
+      .then(([access, status]) => {
+        setHasAccess(access);
+        setPaymentPending(!!status && status.status === "pending");
+        setLoadingStatus(false);
+      })
+      .catch(() => setLoadingStatus(false));
+  }, []);
 
   const handleLogout = () => {
     clearSession();
-    toast.success("Sie wurden abgemeldet.");
-    navigate({ to: "/" });
+    window.location.href = "/";
   };
 
   if (checking) {
@@ -80,7 +99,7 @@ export default function Dashboard() {
             </div>
             <div>
               <span
-                className="font-display font-bold text-lg block"
+                className="font-bold text-lg block"
                 style={{ color: "oklch(0.96 0.015 230)" }}
               >
                 SDR
@@ -101,18 +120,6 @@ export default function Dashboard() {
               color: "oklch(0.73 0.03 235)",
               border: "1px solid oklch(0.27 0.055 248)",
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "oklch(0.96 0.015 230)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "oklch(0.72 0.13 218 / 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "oklch(0.73 0.03 235)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "oklch(0.27 0.055 248)";
-            }}
             data-ocid="dashboard.logout.button"
           >
             <LogOut className="w-4 h-4" />
@@ -129,7 +136,7 @@ export default function Dashboard() {
           className="mb-10"
         >
           <h1
-            className="font-display font-bold text-3xl sm:text-4xl mb-2"
+            className="font-bold text-3xl sm:text-4xl mb-2"
             style={{ color: "oklch(0.96 0.015 230)" }}
           >
             Willkommen,{" "}
@@ -140,6 +147,7 @@ export default function Dashboard() {
           </p>
         </motion.div>
 
+        {/* Musterschreiben Section */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -149,39 +157,142 @@ export default function Dashboard() {
             background: "oklch(0.17 0.03 248)",
             border: "1px solid oklch(0.27 0.055 248)",
           }}
-          data-ocid="dashboard.panel"
+          data-ocid="dashboard.musterschreiben.panel"
         >
-          <div className="flex items-start gap-4">
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{
-                background: "oklch(0.72 0.13 218 / 0.12)",
-                border: "1px solid oklch(0.72 0.13 218 / 0.25)",
-              }}
-            >
-              <Shield
-                className="w-6 h-6"
+          {loadingStatus ? (
+            <div className="flex items-center gap-3">
+              <Loader2
+                className="w-5 h-5 animate-spin"
                 style={{ color: "oklch(0.72 0.13 218)" }}
               />
-            </div>
-            <div>
-              <h2
-                className="font-display font-bold text-xl mb-2"
-                style={{ color: "oklch(0.96 0.015 230)" }}
-              >
-                Ihr persönlicher Bereich
-              </h2>
               <p
-                className="text-base leading-relaxed"
+                className="text-base"
                 style={{ color: "oklch(0.73 0.03 235)" }}
               >
-                Weitere Funktionen folgen bald. Hier werden Sie Ihre Dokumente,
-                Strategien und rechtlichen Leitfäden verwalten können.
+                Status wird geladen…
               </p>
             </div>
-          </div>
+          ) : hasAccess ? (
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <CheckCircle
+                  className="w-7 h-7"
+                  style={{ color: "oklch(0.55 0.15 145)" }}
+                />
+                <span
+                  className="px-3 py-1.5 rounded-full text-base font-semibold"
+                  style={{
+                    background: "oklch(0.55 0.15 145 / 0.15)",
+                    color: "oklch(0.55 0.15 145)",
+                    border: "1px solid oklch(0.55 0.15 145 / 0.3)",
+                  }}
+                >
+                  ✓ Musterschreiben freigeschaltet
+                </span>
+              </div>
+              <p
+                className="text-base mb-5"
+                style={{ color: "oklch(0.73 0.03 235)" }}
+              >
+                Ihr Zugang ist aktiv. Sie können jetzt alle Musterschreiben
+                einsehen und herunterladen.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/musterschreiben";
+                }}
+                className="px-6 py-3 rounded-xl text-lg font-bold transition-all"
+                style={{ background: "oklch(0.55 0.15 145)", color: "#fff" }}
+                data-ocid="dashboard.open_musterschreiben.button"
+              >
+                Musterschreiben öffnen →
+              </button>
+            </div>
+          ) : paymentPending ? (
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <Clock
+                  className="w-6 h-6"
+                  style={{ color: "oklch(0.72 0.13 218)" }}
+                />
+                <h2
+                  className="font-bold text-xl"
+                  style={{ color: "oklch(0.96 0.015 230)" }}
+                >
+                  Zahlung wird überprüft…
+                </h2>
+              </div>
+              <p
+                className="text-base mb-4"
+                style={{ color: "oklch(0.73 0.03 235)" }}
+              >
+                Ihre Zahlung wurde eingereicht und wird gerade geprüft. Sie
+                erhalten Zugang sobald die Bestätigung vorliegt.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/zahlung";
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-base font-medium transition-all"
+                style={{
+                  color: "oklch(0.72 0.13 218)",
+                  border: "1px solid oklch(0.72 0.13 218 / 0.35)",
+                }}
+                data-ocid="dashboard.check_payment.button"
+              >
+                Zahlungsstatus prüfen →
+              </button>
+            </div>
+          ) : (
+            <div>
+              <h2
+                className="font-bold text-2xl mb-3"
+                style={{ color: "oklch(0.96 0.015 230)" }}
+              >
+                Musterschreiben kaufen
+              </h2>
+              <p
+                className="text-base leading-relaxed mb-2"
+                style={{ color: "oklch(0.73 0.03 235)" }}
+              >
+                Erhalten Sie sofortigen Zugang zu professionellen
+                Musterschreiben für den Umgang mit Behörden, Ämtern und
+                Gerichten. Unsere Vorlagen helfen Ihnen, Ihre Rechte wirksam zu
+                vertreten.
+              </p>
+              <ul
+                className="text-base mb-5 space-y-1"
+                style={{ color: "oklch(0.73 0.03 235)" }}
+              >
+                <li>✓ Widerspruch gegen Behördenbescheid</li>
+                <li>✓ Anforderung von Amtsstempel und Unterschrift</li>
+                <li>✓ Auskunftsbegehren nach Datenschutz</li>
+                <li>✓ Weitere Vorlagen folgen laufend</li>
+              </ul>
+              <p
+                className="text-sm mb-5"
+                style={{ color: "oklch(0.55 0.02 235)" }}
+              >
+                Bezahlung sicher per Kryptowährung (BTC, ETH, XMR).
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.href = "/zahlung";
+                }}
+                className="px-6 py-3 rounded-xl text-lg font-bold transition-all"
+                style={{ background: "oklch(0.62 0.22 25)", color: "#fff" }}
+                data-ocid="dashboard.buy_musterschreiben.button"
+              >
+                Jetzt Musterschreiben kaufen →
+              </button>
+            </div>
+          )}
         </motion.div>
 
+        {/* Feature cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {[
             {
@@ -225,7 +336,7 @@ export default function Dashboard() {
                 />
               </div>
               <h3
-                className="font-display font-semibold text-base mb-1"
+                className="font-semibold text-base mb-1"
                 style={{ color: "oklch(0.73 0.03 235)" }}
               >
                 {card.title}

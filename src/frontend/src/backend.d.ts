@@ -15,6 +15,18 @@ export enum UserRole {
     user = "user",
     guest = "guest"
 }
+export interface CryptoAddress {
+    currency: string;
+    address: string;
+    amount: string;
+}
+export interface PaymentRequest {
+    nickname: string;
+    currency: string;
+    txHash: string;
+    status: string;
+    submittedAt: bigint;
+}
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     getAllProfiles(): Promise<Array<UserProfile>>;
@@ -53,4 +65,64 @@ export interface backendInterface {
         error: string;
     }>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setCryptoAddress(adminPw: string, currency: string, address: string, amount: string): Promise<{
+        __kind__: "ok";
+        ok: null;
+    } | {
+        __kind__: "error";
+        error: string;
+    }>;
+    getCryptoAddresses(): Promise<Array<CryptoAddress>>;
+    submitPaymentProof(nickname: string, currency: string, txHash: string): Promise<{
+        __kind__: "ok";
+        ok: null;
+    } | {
+        __kind__: "error";
+        error: string;
+    }>;
+    getMyPaymentStatus(nickname: string): Promise<PaymentRequest | null>;
+    getAllPaymentRequests(adminPw: string): Promise<{
+        __kind__: "ok";
+        ok: Array<PaymentRequest>;
+    } | {
+        __kind__: "error";
+        error: string;
+    }>;
+    approvePayment(adminPw: string, nickname: string): Promise<{
+        __kind__: "ok";
+        ok: null;
+    } | {
+        __kind__: "error";
+        error: string;
+    }>;
+    rejectPayment(adminPw: string, nickname: string): Promise<{
+        __kind__: "ok";
+        ok: null;
+    } | {
+        __kind__: "error";
+        error: string;
+    }>;
+    hasMusterschreibenAccess(nickname: string): Promise<boolean>;
+    grantMusterschreibenAccess(adminPw: string, nickname: string): Promise<{
+        __kind__: "ok";
+        ok: null;
+    } | {
+        __kind__: "error";
+        error: string;
+    }>;
+    revokeMusterschreibenAccess(adminPw: string, nickname: string): Promise<{
+        __kind__: "ok";
+        ok: null;
+    } | {
+        __kind__: "error";
+        error: string;
+    }>;
+    verifyBTCTransaction(txHash: string, nickname: string): Promise<{
+        __kind__: "confirmed";
+    } | {
+        __kind__: "pending";
+    } | {
+        __kind__: "error";
+        error: string;
+    }>;
 }

@@ -1,11 +1,12 @@
-import type { backendInterface } from "./backend";
+import type { backendInterface } from "./backend.d";
 import { createActorWithConfig } from "./config";
 
 let actorInstance: backendInterface | null = null;
 
 async function getActor(): Promise<backendInterface> {
   if (!actorInstance) {
-    actorInstance = await createActorWithConfig();
+    actorInstance =
+      (await createActorWithConfig()) as unknown as backendInterface;
   }
   return actorInstance;
 }

@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowLeft,
@@ -11,17 +10,17 @@ import {
   Loader2,
   Shield,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { backend } from "../backendActor";
 import { hashPassword, saveSession } from "../utils/auth";
 
 export default function AuthPage() {
   const search = useSearch({ from: "/auth" }) as { tab?: string };
-  const navigate = useNavigate();
-  const defaultTab = search.tab === "login" ? "login" : "register";
+  const defaultMode = search.tab === "login" ? "login" : "register";
 
-  const [tab, setTab] = useState<"register" | "login">(defaultTab);
+  const [mode, setMode] = useState<"register" | "login">(defaultMode);
   const [loading, setLoading] = useState(false);
+  const [navigating, setNavigating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
@@ -31,6 +30,14 @@ export default function AuthPage() {
 
   const [loginNickname, setLoginNickname] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+
+  // Navigate AFTER React has fully committed the "navigating" render to the DOM.
+  // This avoids any insertBefore conflict because the form is already removed.
+  useEffect(() => {
+    if (navigating) {
+      window.location.replace("/welcome");
+    }
+  }, [navigating]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,19 +58,23 @@ export default function AuthPage() {
     try {
       const hash = await hashPassword(regPassword);
       const result = await backend.register(regNickname.trim(), hash);
-      if (result.__kind__ === "error") {
-        setError(result.error);
+      if ("error" in result) {
+        setError(String(result.error));
         setLoading(false);
         return;
       }
       const loginResult = await backend.login(regNickname.trim(), hash);
-      if (loginResult.__kind__ === "error") {
-        setError(loginResult.error);
+      if ("error" in loginResult) {
+        setError(String(loginResult.error));
         setLoading(false);
         return;
       }
-      saveSession({ token: loginResult.ok, nickname: regNickname.trim() });
-      window.location.replace("/welcome");
+      saveSession({
+        token: String(loginResult.ok),
+        nickname: regNickname.trim(),
+      });
+      // Replace entire form with spinner FIRST, then navigate in useEffect
+      setNavigating(true);
     } catch {
       setError("Ein Fehler ist aufgetreten. Bitte erneut versuchen.");
       setLoading(false);
@@ -81,13 +92,14 @@ export default function AuthPage() {
     try {
       const hash = await hashPassword(loginPassword);
       const result = await backend.login(loginNickname.trim(), hash);
-      if (result.__kind__ === "error") {
+      if ("error" in result) {
         setError("Ungültiger Benutzername oder Passwort.");
         setLoading(false);
         return;
       }
-      saveSession({ token: result.ok, nickname: loginNickname.trim() });
-      window.location.replace("/welcome");
+      saveSession({ token: String(result.ok), nickname: loginNickname.trim() });
+      // Replace entire form with spinner FIRST, then navigate in useEffect
+      setNavigating(true);
     } catch {
       setError("Ein Fehler ist aufgetreten. Bitte erneut versuchen.");
       setLoading(false);
@@ -138,7 +150,9 @@ export default function AuthPage() {
           </div>
           <button
             type="button"
-            onClick={() => navigate({ to: "/" })}
+            onClick={() => {
+              window.location.replace("/");
+            }}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-base font-medium transition-all"
             style={{
               color: "oklch(0.72 0.13 218)",
@@ -191,93 +205,169 @@ export default function AuthPage() {
             </h1>
           </div>
 
-          {/* Inline error message - no portal, no conflict */}
-          {error && (
-            <div
-              className="flex items-start gap-3 rounded-xl px-4 py-3 mb-5"
-              style={{
-                background: "oklch(0.35 0.12 25 / 0.2)",
-                border: "1px solid oklch(0.55 0.18 25 / 0.5)",
-              }}
-            >
-              <AlertCircle
-                className="w-5 h-5 mt-0.5 flex-shrink-0"
-                style={{ color: "oklch(0.72 0.18 25)" }}
+          {/* Show only spinner while navigating – no form elements in DOM */}
+          {navigating ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <Loader2
+                className="w-10 h-10 animate-spin"
+                style={{ color: "oklch(0.72 0.13 218)" }}
               />
-              <p className="text-sm" style={{ color: "oklch(0.88 0.06 25)" }}>
-                {error}
+              <p
+                className="text-base"
+                style={{ color: "oklch(0.73 0.03 235)" }}
+              >
+                Weiterleitung…
               </p>
             </div>
-          )}
-
-          <Tabs
-            value={tab}
-            onValueChange={(v) => {
-              setError("");
-              setTab(v as "register" | "login");
-            }}
-          >
-            <TabsList
-              className="grid grid-cols-2 w-full mb-6"
-              style={{
-                background: "oklch(0.13 0.03 248)",
-                border: "1px solid oklch(0.27 0.055 248)",
-              }}
-              data-ocid="auth.tab"
-            >
-              <TabsTrigger
-                value="register"
-                data-ocid="auth.register.tab"
-                className="text-base"
+          ) : (
+            <>
+              {/* Tab toggle */}
+              <div
+                className="grid grid-cols-2 rounded-xl p-1 mb-6"
+                style={{
+                  background: "oklch(0.13 0.03 248)",
+                  border: "1px solid oklch(0.27 0.055 248)",
+                }}
               >
-                Registrieren
-              </TabsTrigger>
-              <TabsTrigger
-                value="login"
-                data-ocid="auth.login.tab"
-                className="text-base"
-              >
-                Anmelden
-              </TabsTrigger>
-            </TabsList>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("register");
+                    setError("");
+                  }}
+                  className="py-2 rounded-lg text-base font-medium transition-all"
+                  style={{
+                    background:
+                      mode === "register"
+                        ? "oklch(0.72 0.13 218)"
+                        : "transparent",
+                    color:
+                      mode === "register"
+                        ? "oklch(0.135 0.025 248)"
+                        : "oklch(0.73 0.03 235)",
+                  }}
+                  data-ocid="auth.register.tab"
+                >
+                  Registrieren
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("login");
+                    setError("");
+                  }}
+                  className="py-2 rounded-lg text-base font-medium transition-all"
+                  style={{
+                    background:
+                      mode === "login" ? "oklch(0.72 0.13 218)" : "transparent",
+                    color:
+                      mode === "login"
+                        ? "oklch(0.135 0.025 248)"
+                        : "oklch(0.73 0.03 235)",
+                  }}
+                  data-ocid="auth.login.tab"
+                >
+                  Anmelden
+                </button>
+              </div>
 
-            <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label
-                    className="text-base"
-                    style={{ color: "oklch(0.73 0.03 235)" }}
-                  >
-                    Nickname
-                  </Label>
-                  <Input
-                    value={regNickname}
-                    onChange={(e) => setRegNickname(e.target.value)}
-                    placeholder="Ihr Nickname"
-                    disabled={loading}
-                    autoComplete="username"
-                    className="text-base"
-                    style={{
-                      background: "oklch(0.13 0.03 248)",
-                      border: "1px solid oklch(0.27 0.055 248)",
-                      color: "oklch(0.96 0.015 230)",
-                    }}
-                    data-ocid="auth.register.input"
+              {/* Inline error – no portals */}
+              {error && (
+                <div
+                  className="flex items-start gap-3 rounded-xl px-4 py-3 mb-5"
+                  style={{
+                    background: "oklch(0.35 0.12 25 / 0.2)",
+                    border: "1px solid oklch(0.55 0.18 25 / 0.5)",
+                  }}
+                >
+                  <AlertCircle
+                    className="w-5 h-5 mt-0.5 flex-shrink-0"
+                    style={{ color: "oklch(0.72 0.18 25)" }}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    className="text-base"
-                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  <p
+                    className="text-sm"
+                    style={{ color: "oklch(0.88 0.06 25)" }}
                   >
-                    Passwort
-                  </Label>
-                  <div className="relative">
+                    {error}
+                  </p>
+                </div>
+              )}
+
+              {/* Register form */}
+              {mode === "register" && (
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label
+                      className="text-base"
+                      style={{ color: "oklch(0.73 0.03 235)" }}
+                    >
+                      Nickname
+                    </Label>
+                    <Input
+                      value={regNickname}
+                      onChange={(e) => setRegNickname(e.target.value)}
+                      placeholder="Ihr Nickname"
+                      disabled={loading}
+                      autoComplete="username"
+                      className="text-base"
+                      style={{
+                        background: "oklch(0.13 0.03 248)",
+                        border: "1px solid oklch(0.27 0.055 248)",
+                        color: "oklch(0.96 0.015 230)",
+                      }}
+                      data-ocid="auth.register.input"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label
+                      className="text-base"
+                      style={{ color: "oklch(0.73 0.03 235)" }}
+                    >
+                      Passwort
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="Mindestens 6 Zeichen"
+                        disabled={loading}
+                        autoComplete="new-password"
+                        className="text-base"
+                        style={{
+                          background: "oklch(0.13 0.03 248)",
+                          border: "1px solid oklch(0.27 0.055 248)",
+                          color: "oklch(0.96 0.015 230)",
+                          paddingRight: "2.5rem",
+                        }}
+                        data-ocid="auth.password.input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
+                        style={{ color: "oklch(0.73 0.03 235)" }}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label
+                      className="text-base"
+                      style={{ color: "oklch(0.73 0.03 235)" }}
+                    >
+                      Passwort bestätigen
+                    </Label>
                     <Input
                       type={showPassword ? "text" : "password"}
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="Mindestens 6 Zeichen"
+                      value={regConfirm}
+                      onChange={(e) => setRegConfirm(e.target.value)}
+                      placeholder="Passwort wiederholen"
                       disabled={loading}
                       autoComplete="new-password"
                       className="text-base"
@@ -285,141 +375,110 @@ export default function AuthPage() {
                         background: "oklch(0.13 0.03 248)",
                         border: "1px solid oklch(0.27 0.055 248)",
                         color: "oklch(0.96 0.015 230)",
-                        paddingRight: "2.5rem",
                       }}
-                      data-ocid="auth.password.input"
+                      data-ocid="auth.confirm_password.input"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full mt-2 text-base font-semibold"
+                    disabled={loading}
+                    data-ocid="auth.register.submit_button"
+                    style={{
+                      background: "oklch(0.72 0.13 218)",
+                      color: "oklch(0.135 0.025 248)",
+                    }}
+                  >
+                    {loading && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    {loading ? "Wird erstellt…" : "Konto erstellen"}
+                  </Button>
+                </form>
+              )}
+
+              {/* Login form */}
+              {mode === "login" && (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label
+                      className="text-base"
                       style={{ color: "oklch(0.73 0.03 235)" }}
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    className="text-base"
-                    style={{ color: "oklch(0.73 0.03 235)" }}
-                  >
-                    Passwort bestätigen
-                  </Label>
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={regConfirm}
-                    onChange={(e) => setRegConfirm(e.target.value)}
-                    placeholder="Passwort wiederholen"
-                    disabled={loading}
-                    autoComplete="new-password"
-                    className="text-base"
-                    style={{
-                      background: "oklch(0.13 0.03 248)",
-                      border: "1px solid oklch(0.27 0.055 248)",
-                      color: "oklch(0.96 0.015 230)",
-                    }}
-                    data-ocid="auth.confirm_password.input"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full mt-2 text-base font-semibold"
-                  disabled={loading}
-                  data-ocid="auth.register.submit_button"
-                  style={{
-                    background: "oklch(0.72 0.13 218)",
-                    color: "oklch(0.135 0.025 248)",
-                  }}
-                >
-                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {loading ? "Wird erstellt…" : "Konto erstellen"}
-                </Button>
-              </form>
-            </TabsContent>
-
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label
-                    className="text-base"
-                    style={{ color: "oklch(0.73 0.03 235)" }}
-                  >
-                    Nickname
-                  </Label>
-                  <Input
-                    value={loginNickname}
-                    onChange={(e) => setLoginNickname(e.target.value)}
-                    placeholder="Ihr Nickname"
-                    disabled={loading}
-                    autoComplete="username"
-                    className="text-base"
-                    style={{
-                      background: "oklch(0.13 0.03 248)",
-                      border: "1px solid oklch(0.27 0.055 248)",
-                      color: "oklch(0.96 0.015 230)",
-                    }}
-                    data-ocid="auth.login.input"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label
-                    className="text-base"
-                    style={{ color: "oklch(0.73 0.03 235)" }}
-                  >
-                    Passwort
-                  </Label>
-                  <div className="relative">
+                      Nickname
+                    </Label>
                     <Input
-                      type={showPassword ? "text" : "password"}
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      placeholder="Ihr Passwort"
+                      value={loginNickname}
+                      onChange={(e) => setLoginNickname(e.target.value)}
+                      placeholder="Ihr Nickname"
                       disabled={loading}
-                      autoComplete="current-password"
+                      autoComplete="username"
                       className="text-base"
                       style={{
                         background: "oklch(0.13 0.03 248)",
                         border: "1px solid oklch(0.27 0.055 248)",
                         color: "oklch(0.96 0.015 230)",
-                        paddingRight: "2.5rem",
                       }}
-                      data-ocid="auth.login_password.input"
+                      data-ocid="auth.login.input"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label
+                      className="text-base"
                       style={{ color: "oklch(0.73 0.03 235)" }}
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </button>
+                      Passwort
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="Ihr Passwort"
+                        disabled={loading}
+                        autoComplete="current-password"
+                        className="text-base"
+                        style={{
+                          background: "oklch(0.13 0.03 248)",
+                          border: "1px solid oklch(0.27 0.055 248)",
+                          color: "oklch(0.96 0.015 230)",
+                          paddingRight: "2.5rem",
+                        }}
+                        data-ocid="auth.login_password.input"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
+                        style={{ color: "oklch(0.73 0.03 235)" }}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <Button
-                  type="submit"
-                  className="w-full mt-2 text-base font-semibold"
-                  disabled={loading}
-                  data-ocid="auth.login.submit_button"
-                  style={{
-                    background: "oklch(0.72 0.13 218)",
-                    color: "oklch(0.135 0.025 248)",
-                  }}
-                >
-                  {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {loading ? "Wird angemeldet…" : "Anmelden"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+                  <Button
+                    type="submit"
+                    className="w-full mt-2 text-base font-semibold"
+                    disabled={loading}
+                    data-ocid="auth.login.submit_button"
+                    style={{
+                      background: "oklch(0.72 0.13 218)",
+                      color: "oklch(0.135 0.025 248)",
+                    }}
+                  >
+                    {loading && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    {loading ? "Wird angemeldet…" : "Anmelden"}
+                  </Button>
+                </form>
+              )}
+            </>
+          )}
         </div>
       </main>
     </div>

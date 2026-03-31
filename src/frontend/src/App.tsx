@@ -1,4 +1,3 @@
-import { Toaster } from "@/components/ui/sonner";
 import {
   Outlet,
   RouterProvider,
@@ -11,15 +10,12 @@ import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import FragenPage from "./pages/FragenPage";
 import LandingPage from "./pages/LandingPage";
+import MusterschreibenPage from "./pages/MusterschreibenPage";
 import WelcomePage from "./pages/WelcomePage";
+import ZahlungPage from "./pages/ZahlungPage";
 
 const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <Toaster richColors />
-    </>
-  ),
+  component: () => <Outlet />,
 });
 
 const indexRoute = createRoute({
@@ -61,6 +57,18 @@ const fragenRoute = createRoute({
   component: FragenPage,
 });
 
+const zahlungRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/zahlung",
+  component: ZahlungPage,
+});
+
+const musterschreibenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/musterschreiben",
+  component: MusterschreibenPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   authRoute,
@@ -68,6 +76,8 @@ const routeTree = rootRoute.addChildren([
   adminRoute,
   welcomeRoute,
   fragenRoute,
+  zahlungRoute,
+  musterschreibenRoute,
 ]);
 
 const router = createRouter({ routeTree });

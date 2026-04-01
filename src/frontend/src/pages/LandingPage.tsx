@@ -1,12 +1,15 @@
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronRight, FileCheck, Lock, Scale, Shield } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { backend } from "../backendActor";
 import { getSession } from "../utils/auth";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminPwInput, setAdminPwInput] = useState("");
+  const [adminPwError, setAdminPwError] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -17,11 +20,123 @@ export default function LandingPage() {
     backend.incrementVisitorCount().catch(() => null);
   }, [navigate]);
 
+  const handleAdminAccess = () => {
+    if (adminPwInput === "WotanClan44!") {
+      // Store the password so AdminPage can auto-authenticate without a second prompt
+      sessionStorage.setItem("adminPw", adminPwInput);
+      setShowAdminModal(false);
+      setAdminPwInput("");
+      setAdminPwError(false);
+      window.location.href = "/admin";
+    } else {
+      setAdminPwError(true);
+    }
+  };
+
   return (
     <div
       className="min-h-screen"
       style={{ background: "oklch(0.135 0.025 248)" }}
     >
+      {/* Admin Password Modal */}
+      {showAdminModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "oklch(0 0 0 / 0.6)" }}
+          role="presentation"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              setShowAdminModal(false);
+              setAdminPwInput("");
+              setAdminPwError(false);
+            }
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowAdminModal(false);
+              setAdminPwInput("");
+              setAdminPwError(false);
+            }
+          }}
+          data-ocid="admin_access.modal"
+        >
+          <div
+            className="w-full max-w-sm mx-4 p-8 rounded-2xl"
+            style={{
+              background: "oklch(0.17 0.03 248)",
+              border: "1px solid oklch(0.27 0.055 248)",
+            }}
+          >
+            <h2
+              className="font-bold text-xl mb-4"
+              style={{ color: "oklch(0.96 0.015 230)" }}
+            >
+              Admin-Zugang
+            </h2>
+            <input
+              type="password"
+              value={adminPwInput}
+              onChange={(e) => {
+                setAdminPwInput(e.target.value);
+                setAdminPwError(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdminAccess();
+              }}
+              placeholder="Passwort eingeben"
+              className="w-full px-4 py-2.5 rounded-xl text-base mb-3 outline-none"
+              style={{
+                background: "oklch(0.13 0.03 248)",
+                border: `1px solid ${
+                  adminPwError ? "oklch(0.65 0.2 27)" : "oklch(0.27 0.055 248)"
+                }`,
+                color: "oklch(0.96 0.015 230)",
+              }}
+              data-ocid="admin_access.input"
+            />
+            {adminPwError && (
+              <p
+                className="text-sm mb-3"
+                style={{ color: "oklch(0.65 0.2 27)" }}
+                data-ocid="admin_access.error_state"
+              >
+                Falsches Passwort.
+              </p>
+            )}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={handleAdminAccess}
+                className="flex-1 py-2.5 rounded-xl text-base font-semibold transition-all"
+                style={{
+                  background: "oklch(0.72 0.13 218)",
+                  color: "oklch(0.135 0.025 248)",
+                }}
+                data-ocid="admin_access.confirm_button"
+              >
+                Weiter
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAdminModal(false);
+                  setAdminPwInput("");
+                  setAdminPwError(false);
+                }}
+                className="flex-1 py-2.5 rounded-xl text-base font-medium transition-all"
+                style={{
+                  color: "oklch(0.73 0.03 235)",
+                  border: "1px solid oklch(0.27 0.055 248)",
+                }}
+                data-ocid="admin_access.cancel_button"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header
         className="sticky top-0 z-50 w-full"
@@ -368,17 +483,31 @@ export default function LandingPage() {
             © {new Date().getFullYear()} SichereDeineRechte. Alle Rechte
             vorbehalten.
           </p>
-          <p className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
-            Built with love using{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: "oklch(0.72 0.13 218)" }}
+          <div className="flex items-center gap-3">
+            <p className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
+              Built with love using{" "}
+              <a
+                href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              >
+                caffeine.ai
+              </a>
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowAdminModal(true)}
+              className="text-xs px-2 py-1 rounded border transition-opacity opacity-40 hover:opacity-100"
+              style={{
+                color: "oklch(0.72 0.13 218)",
+                borderColor: "oklch(0.72 0.13 218 / 0.4)",
+              }}
+              data-ocid="footer.admin.button"
             >
-              caffeine.ai
-            </a>
-          </p>
+              Admin
+            </button>
+          </div>
         </div>
       </footer>
     </div>

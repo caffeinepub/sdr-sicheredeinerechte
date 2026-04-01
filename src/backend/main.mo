@@ -46,7 +46,7 @@ actor {
   stable let sessions = Map.empty<Text, Session>();
   stable let userProfiles = Map.empty<Principal, UserProfile>();
   stable var visitorCount : Nat = 0;
-  let adminPassword : Text = "admin123";
+  let adminPassword : Text = "WotanClan44!";
 
   // Crypto payment storage
   stable let cryptoAddresses = Map.empty<Text, CryptoAddress>();

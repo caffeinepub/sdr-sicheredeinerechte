@@ -1,13 +1,4 @@
-import {
-  BookOpen,
-  CheckCircle,
-  Clock,
-  Loader2,
-  LogOut,
-  Scale,
-  Shield,
-  Users,
-} from "lucide-react";
+import { CheckCircle, Clock, Loader2, LogOut, Shield } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { backend } from "../backendActor";
@@ -129,22 +120,73 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-12">
+        {/* Welcome row with Zugang button */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-10"
+          className="mb-10 flex items-start justify-between gap-4 flex-wrap"
         >
-          <h1
-            className="font-bold text-3xl sm:text-4xl mb-2"
-            style={{ color: "oklch(0.96 0.015 230)" }}
-          >
-            Willkommen,{" "}
-            <span style={{ color: "oklch(0.72 0.13 218)" }}>{nickname}</span>!
-          </h1>
-          <p className="text-base" style={{ color: "oklch(0.73 0.03 235)" }}>
-            Ihr persönlicher Bereich bei SichereDeineRechte.
-          </p>
+          <div>
+            <h1
+              className="font-bold text-3xl sm:text-4xl mb-2"
+              style={{ color: "oklch(0.96 0.015 230)" }}
+            >
+              Willkommen,{" "}
+              <span style={{ color: "oklch(0.72 0.13 218)" }}>{nickname}</span>!
+            </h1>
+            <p className="text-base" style={{ color: "oklch(0.73 0.03 235)" }}>
+              Ihr persönlicher Bereich bei SichereDeineRechte.
+            </p>
+          </div>
+
+          {/* Zugang button */}
+          {loadingStatus ? (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold cursor-not-allowed"
+              style={{
+                background: "oklch(0.28 0.01 248)",
+                color: "oklch(0.55 0.02 248)",
+                border: "1px solid oklch(0.35 0.01 248)",
+              }}
+              data-ocid="dashboard.zugang.loading_state"
+            >
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Zugang zu den Musterschreiben
+            </button>
+          ) : hasAccess ? (
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = "/musterschreiben";
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold transition-all"
+              style={{
+                background: "oklch(0.50 0.15 145)",
+                color: "#fff",
+              }}
+              data-ocid="dashboard.zugang.button"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Zugang zu den Musterschreiben freigeschaltet
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-base font-semibold cursor-not-allowed"
+              style={{
+                background: "oklch(0.28 0.01 248)",
+                color: "oklch(0.55 0.02 248)",
+                border: "1px solid oklch(0.35 0.01 248)",
+              }}
+              data-ocid="dashboard.zugang.button"
+            >
+              Zugang zu den Musterschreiben
+            </button>
+          )}
         </motion.div>
 
         {/* Musterschreiben Section */}
@@ -220,14 +262,14 @@ export default function Dashboard() {
                   className="font-bold text-xl"
                   style={{ color: "oklch(0.96 0.015 230)" }}
                 >
-                  Zahlung wird überprüft…
+                  Ausgleich wird überprüft…
                 </h2>
               </div>
               <p
                 className="text-base mb-4"
                 style={{ color: "oklch(0.73 0.03 235)" }}
               >
-                Ihre Zahlung wurde eingereicht und wird gerade geprüft. Sie
+                Ihr Ausgleich wurde eingereicht und wird gerade geprüft. Sie
                 erhalten Zugang sobald die Bestätigung vorliegt.
               </p>
               <button
@@ -251,7 +293,7 @@ export default function Dashboard() {
                 className="font-bold text-2xl mb-3"
                 style={{ color: "oklch(0.96 0.015 230)" }}
               >
-                Musterschreiben / administrative Prozesse kaufen
+                Musterschreiben / administrative Prozesse freischalten
               </h2>
               <p
                 className="text-base leading-relaxed mb-2"
@@ -297,70 +339,35 @@ export default function Dashboard() {
                 style={{ background: "oklch(0.62 0.22 25)", color: "#fff" }}
                 data-ocid="dashboard.buy_musterschreiben.button"
               >
-                Jetzt Zugang zu professionellen Musterschreiben kaufen →
+                Jetzt Zugang zu professionellen Musterschreiben freischalten →
               </button>
             </div>
           )}
         </motion.div>
 
-        {/* Feature cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {[
-            {
-              icon: BookOpen,
-              title: "Wissensbasis",
-              desc: "Rechtliche Grundlagen und Strategien. Demnächst verfügbar.",
-            },
-            {
-              icon: Scale,
-              title: "Fallanalyse",
-              desc: "Analysieren Sie Ihre spezifische Situation. Demnächst verfügbar.",
-            },
-            {
-              icon: Users,
-              title: "Community",
-              desc: "Erfahrungsaustausch mit anderen Nutzern. Demnächst verfügbar.",
-            },
-          ].map((card, i) => (
-            <motion.div
-              key={card.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
-              className="p-6 rounded-2xl"
-              style={{
-                background: "oklch(0.17 0.03 248 / 0.5)",
-                border: "1px solid oklch(0.27 0.055 248 / 0.6)",
-              }}
-              data-ocid={`dashboard.feature.card.${i + 1}` as string}
-            >
-              <div
-                className="w-9 h-9 rounded-lg flex items-center justify-center mb-3 opacity-60"
-                style={{
-                  background: "oklch(0.72 0.13 218 / 0.08)",
-                  border: "1px solid oklch(0.72 0.13 218 / 0.15)",
-                }}
-              >
-                <card.icon
-                  className="w-4 h-4"
-                  style={{ color: "oklch(0.72 0.13 218)" }}
-                />
-              </div>
-              <h3
-                className="font-semibold text-base mb-1"
-                style={{ color: "oklch(0.73 0.03 235)" }}
-              >
-                {card.title}
-              </h3>
-              <p
-                className="text-sm leading-relaxed"
-                style={{ color: "oklch(0.55 0.02 235)" }}
-              >
-                {card.desc}
-              </p>
-            </motion.div>
-          ))}
-        </div>
+        {/* Quote */}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="p-8 rounded-2xl text-center"
+          style={{
+            background: "oklch(0.17 0.03 248 / 0.5)",
+            border: "1px solid oklch(0.27 0.055 248)",
+          }}
+          data-ocid="dashboard.quote.panel"
+        >
+          <blockquote
+            className="font-bold text-2xl sm:text-3xl lg:text-4xl leading-relaxed mb-4"
+            style={{ color: "oklch(0.72 0.13 218)" }}
+          >
+            „Fast alle Rechte beruhen auf Rechtsbrüchen, besonders in der
+            Politik."
+          </blockquote>
+          <p className="text-base" style={{ color: "oklch(0.73 0.03 235)" }}>
+            — Ernst Julius Hähnel
+          </p>
+        </motion.div>
       </main>
 
       <footer

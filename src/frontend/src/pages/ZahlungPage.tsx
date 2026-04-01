@@ -9,7 +9,9 @@ import {
 } from "@/components/ui/select";
 import {
   CheckCircle,
+  ChevronDown,
   ChevronLeft,
+  ChevronUp,
   Clock,
   Copy,
   Loader2,
@@ -74,7 +76,6 @@ function CurrencyIcon({
   if (currency === "BTC") return <SiBitcoin style={iconStyle} />;
   if (currency === "ETH") return <SiEthereum style={iconStyle} />;
   if (currency === "SOL") return <SiSolana style={iconStyle} />;
-  // ICP and XRP: styled text badge
   return (
     <span className="text-3xl font-bold leading-none" style={{ color }}>
       {symbol}
@@ -94,6 +95,7 @@ export default function ZahlungPage() {
   const [submitMessage, setSubmitMessage] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [copiedAddress, setCopiedAddress] = useState("");
+  const [expandedQR, setExpandedQR] = useState<string | null>(null);
 
   useEffect(() => {
     const session = getSession();
@@ -138,18 +140,18 @@ export default function ZahlungPage() {
           );
           if (verify.__kind__ === "confirmed") {
             setSubmitMessage(
-              "BTC-Transaktion bestätigt! Zahlung wird verarbeitet.",
+              "BTC-Transaktion bestätigt! Ausgleich wird verarbeitet.",
             );
           } else if (verify.__kind__ === "pending") {
             setSubmitMessage(
-              "Zahlung eingereicht. BTC-Transaktion wird noch bestätigt – bitte haben Sie etwas Geduld.",
+              "Ausgleich eingereicht. BTC-Transaktion wird noch bestätigt – bitte haben Sie etwas Geduld.",
             );
           } else {
-            setSubmitMessage("Zahlung eingereicht. Wird manuell geprüft.");
+            setSubmitMessage("Ausgleich eingereicht. Wird manuell geprüft.");
           }
         } else {
           setSubmitMessage(
-            "Ihre Zahlung wurde eingereicht und wird geprüft. Sie erhalten Zugang sobald die Zahlung bestätigt ist.",
+            "Ihr Ausgleich wurde eingereicht und wird geprüft. Sie erhalten Zugang sobald der Ausgleich bestätigt ist.",
           );
         }
         const updated = await backend.getMyPaymentStatus(nickname);
@@ -259,9 +261,9 @@ export default function ZahlungPage() {
             className="text-lg leading-relaxed mb-10"
             style={{ color: "oklch(0.73 0.03 235)" }}
           >
-            Überweisen Sie den geforderten Betrag in einer der unterstützten
+            Überweisen Sie den geforderten Ausgleich in einer der unterstützten
             Kryptowährungen an die unten angegebene Adresse. Geben Sie
-            anschließend Ihren Transaktions-Hash ein, damit wir Ihre Zahlung
+            anschließend Ihren Transaktions-Hash ein, damit wir Ihren Ausgleich
             bestätigen können.
           </p>
 
@@ -313,7 +315,7 @@ export default function ZahlungPage() {
                       className="font-semibold text-lg"
                       style={{ color: "oklch(0.55 0.15 145)" }}
                     >
-                      Zahlung bestätigt! ✓
+                      Ausgleich bestätigt! ✓
                     </p>
                     <p
                       className="text-base mt-1"
@@ -342,7 +344,7 @@ export default function ZahlungPage() {
                     className="font-semibold text-lg"
                     style={{ color: "oklch(0.72 0.13 218)" }}
                   >
-                    Ihre Zahlung wird überprüft…
+                    Ihr Ausgleich wird überprüft…
                   </p>
                 )}
                 {paymentStatus.status === "rejected" && (
@@ -350,7 +352,7 @@ export default function ZahlungPage() {
                     className="font-semibold text-lg"
                     style={{ color: "oklch(0.62 0.22 25)" }}
                   >
-                    Zahlung abgelehnt. Bitte kontaktieren Sie uns.
+                    Ausgleich abgelehnt. Bitte kontaktieren Sie uns.
                   </p>
                 )}
               </div>
@@ -372,7 +374,6 @@ export default function ZahlungPage() {
                 }}
                 data-ocid={`zahlung.crypto.card.${idx + 1}` as string}
               >
-                {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
                   <CurrencyIcon
                     currency={addr.currency}
@@ -393,7 +394,6 @@ export default function ZahlungPage() {
                   </p>
                 </div>
 
-                {/* Address + Copy */}
                 <div
                   className="flex items-center gap-2 p-3 rounded-xl mb-4"
                   style={{
@@ -429,16 +429,44 @@ export default function ZahlungPage() {
                   </button>
                 </div>
 
-                {/* QR Code */}
-                <div className="flex justify-center">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(addr.address)}&bgcolor=1e2a3a&color=a0c4d8`}
-                    alt={`QR-Code für ${addr.currency} Adresse ${addr.address}`}
-                    width={180}
-                    height={180}
-                    className="rounded-xl"
-                    style={{ border: `2px solid ${addr.color}60` }}
-                  />
+                {/* QR Code Toggle */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedQR(
+                        expandedQR === addr.currency ? null : addr.currency,
+                      )
+                    }
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      color: "oklch(0.73 0.03 235)",
+                      border: "1px solid oklch(0.27 0.055 248)",
+                    }}
+                    data-ocid={`zahlung.qr.toggle.${idx + 1}` as string}
+                  >
+                    {expandedQR === addr.currency ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                    {expandedQR === addr.currency
+                      ? "QR-Code ausblenden"
+                      : "QR-Code anzeigen"}
+                  </button>
+                  {expandedQR === addr.currency && (
+                    <div className="mt-4 flex justify-center">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(addr.address)}&bgcolor=1e2a3a&color=a0c4d8`}
+                        alt={`QR-Code für ${addr.currency} Adresse ${addr.address}`}
+                        width={180}
+                        height={180}
+                        className="rounded-xl"
+                        style={{ border: `2px solid ${addr.color}60` }}
+                      />
+                    </div>
+                  )}
                 </div>
               </motion.div>
             ))}
@@ -460,7 +488,7 @@ export default function ZahlungPage() {
                 className="font-bold text-2xl mb-2"
                 style={{ color: "oklch(0.96 0.015 230)" }}
               >
-                Zahlung bestätigen
+                Ausgleich bestätigen
               </h2>
               <p
                 className="text-base mb-6"
@@ -575,7 +603,7 @@ export default function ZahlungPage() {
                   {submitting ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : null}
-                  {submitting ? "Wird geprüft…" : "Zahlung bestätigen"}
+                  {submitting ? "Wird geprüft…" : "Ausgleich bestätigen"}
                 </button>
               </form>
             </motion.div>
@@ -590,9 +618,8 @@ export default function ZahlungPage() {
               color: "oklch(0.73 0.03 235)",
             }}
           >
-            <strong style={{ color: "oklch(0.72 0.13 218)" }}>Hinweis:</strong>{" "}
-            Nach Bestätigung Ihrer Zahlung erhalten Sie sofort Zugang zu den
-            Musterschreiben.
+            Nach Bestätigung Ihres Ausgleichs erhalten Sie innerhalb von 24
+            Stunden Zugang zu den Musterschreiben.
           </div>
         </motion.div>
       </main>

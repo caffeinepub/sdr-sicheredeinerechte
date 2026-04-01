@@ -10,7 +10,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { PaymentRequest } from "../backend.d";
 import { backend } from "../backendActor";
 
@@ -20,7 +20,7 @@ function StatusBadge({ status }: { status: string }) {
     { label: string; color: string; bg: string; border: string }
   > = {
     confirmed: {
-      label: "Best\u00e4tigt",
+      label: "Bestätigt",
       color: "oklch(0.55 0.15 145)",
       bg: "oklch(0.55 0.15 145 / 0.12)",
       border: "1px solid oklch(0.55 0.15 145 / 0.3)",
@@ -71,6 +71,34 @@ export default function AdminPage() {
   const [addressMsg, setAddressMsg] = useState("");
   const [addressError, setAddressError] = useState("");
 
+  // Auto-login if password was passed from the landing page modal via sessionStorage
+  useEffect(() => {
+    const storedPw = sessionStorage.getItem("adminPw");
+    if (storedPw) {
+      sessionStorage.removeItem("adminPw");
+      autoLogin(storedPw);
+    }
+  }, []);
+
+  const autoLogin = async (pw: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await backend.getVisitorCount(pw);
+      if (result.__kind__ === "error") {
+        setError("Ungültiges Passwort.");
+      } else {
+        setPassword(pw);
+        setVisitorCount(result.ok);
+        loadPaymentRequestsWith(pw);
+      }
+    } catch {
+      setError("Verbindungsfehler. Bitte erneut versuchen.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password) return;
@@ -80,7 +108,7 @@ export default function AdminPage() {
     try {
       const result = await backend.getVisitorCount(password);
       if (result.__kind__ === "error") {
-        setError("Ung\u00fcltiges Passwort.");
+        setError("Ungültiges Passwort.");
       } else {
         setVisitorCount(result.ok);
         loadPaymentRequests();
@@ -89,6 +117,20 @@ export default function AdminPage() {
       setError("Verbindungsfehler. Bitte erneut versuchen.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPaymentRequestsWith = async (pw: string) => {
+    setLoadingPayments(true);
+    try {
+      const result = await backend.getAllPaymentRequests(pw);
+      if (result.__kind__ === "ok") {
+        setPaymentRequests(result.ok);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingPayments(false);
     }
   };
 
@@ -112,7 +154,7 @@ export default function AdminPage() {
     try {
       const result = await backend.approvePayment(password, nickname);
       if (result.__kind__ === "ok") {
-        setPaymentMsg(`Zahlung f\u00fcr "${nickname}" genehmigt.`);
+        setPaymentMsg(`Zahlung für "${nickname}" genehmigt.`);
         loadPaymentRequests();
       } else {
         setPaymentError(result.error);
@@ -128,7 +170,28 @@ export default function AdminPage() {
     try {
       const result = await backend.rejectPayment(password, nickname);
       if (result.__kind__ === "ok") {
-        setPaymentMsg(`Zahlung f\u00fcr "${nickname}" abgelehnt.`);
+        setPaymentMsg(`Zahlung für "${nickname}" abgelehnt.`);
+        loadPaymentRequests();
+      } else {
+        setPaymentError(result.error);
+      }
+    } catch {
+      setPaymentError("Verbindungsfehler.");
+    }
+  };
+
+  const handleGrantAccess = async (nickname: string) => {
+    setPaymentMsg("");
+    setPaymentError("");
+    try {
+      const result = await backend.grantMusterschreibenAccess(
+        password,
+        nickname,
+      );
+      if (result.__kind__ === "ok") {
+        setPaymentMsg(
+          `Musterschreiben-Zugang für "${nickname}" freigeschaltet.`,
+        );
         loadPaymentRequests();
       } else {
         setPaymentError(result.error);
@@ -166,7 +229,7 @@ export default function AdminPage() {
   const cryptoRows = [
     {
       currency: "BTC",
-      icon: "\u20bf",
+      icon: "₿",
       address: btcAddress,
       setAddress: setBtcAddress,
       amount: btcAmount,
@@ -174,7 +237,7 @@ export default function AdminPage() {
     },
     {
       currency: "ETH",
-      icon: "\u039e",
+      icon: "Ξ",
       address: ethAddress,
       setAddress: setEthAddress,
       amount: ethAmount,
@@ -182,13 +245,17 @@ export default function AdminPage() {
     },
     {
       currency: "XMR",
-      icon: "\u0271",
+      icon: "ɱ",
       address: xmrAddress,
       setAddress: setXmrAddress,
       amount: xmrAmount,
       setAmount: setXmrAmount,
     },
   ];
+
+  const sortedPaymentRequests = [...paymentRequests].sort(
+    (a, b) => Number(a.submittedAt) - Number(b.submittedAt),
+  );
 
   return (
     <div
@@ -227,102 +294,122 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div
-            className="p-8 rounded-2xl mb-8"
-            style={{
-              background: "oklch(0.17 0.03 248)",
-              border: "1px solid oklch(0.27 0.055 248)",
-            }}
-            data-ocid="admin.panel"
-          >
-            <h1
-              className="font-bold text-xl mb-1"
-              style={{ color: "oklch(0.96 0.015 230)" }}
-            >
-              Admin-Zugang
-            </h1>
-            <p
-              className="text-base mb-6"
-              style={{ color: "oklch(0.73 0.03 235)" }}
-            >
-              Geben Sie das Admin-Passwort ein.
-            </p>
+          {/* Loading state during auto-login */}
+          {loading && visitorCount === null && (
+            <div className="flex items-center justify-center py-16">
+              <Loader2
+                className="w-8 h-8 animate-spin"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              />
+            </div>
+          )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label
-                  className="text-base"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Admin-Passwort
-                </Label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Passwort eingeben"
-                    disabled={loading}
-                    autoComplete="current-password"
+          {/* Password form – only shown when not loading and not yet logged in */}
+          {!loading && visitorCount === null && (
+            <div
+              className="p-8 rounded-2xl mb-8"
+              style={{
+                background: "oklch(0.17 0.03 248)",
+                border: "1px solid oklch(0.27 0.055 248)",
+              }}
+              data-ocid="admin.panel"
+            >
+              <h1
+                className="font-bold text-xl mb-1"
+                style={{ color: "oklch(0.96 0.015 230)" }}
+              >
+                Admin-Zugang
+              </h1>
+              <p
+                className="text-base mb-6"
+                style={{ color: "oklch(0.73 0.03 235)" }}
+              >
+                Geben Sie das Admin-Passwort ein.
+              </p>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label
                     className="text-base"
-                    style={{
-                      background: "oklch(0.13 0.03 248)",
-                      border: "1px solid oklch(0.27 0.055 248)",
-                      color: "oklch(0.96 0.015 230)",
-                      paddingRight: "2.5rem",
-                    }}
-                    data-ocid="admin.password.input"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
                     style={{ color: "oklch(0.73 0.03 235)" }}
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
+                    Admin-Passwort
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Passwort eingeben"
+                      disabled={loading}
+                      autoComplete="current-password"
+                      className="text-base"
+                      style={{
+                        background: "oklch(0.13 0.03 248)",
+                        border: "1px solid oklch(0.27 0.055 248)",
+                        color: "oklch(0.96 0.015 230)",
+                        paddingRight: "2.5rem",
+                      }}
+                      data-ocid="admin.password.input"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
+                      style={{ color: "oklch(0.73 0.03 235)" }}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {error && (
-                <p
-                  className="text-base py-2 px-3 rounded-lg"
+                {error && (
+                  <p
+                    className="text-base py-2 px-3 rounded-lg"
+                    style={{
+                      color: "oklch(0.65 0.2 27)",
+                      background: "oklch(0.65 0.2 27 / 0.1)",
+                      border: "1px solid oklch(0.65 0.2 27 / 0.2)",
+                    }}
+                    data-ocid="admin.error_state"
+                  >
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || !password}
+                  className="w-full py-2.5 rounded-xl text-base font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                   style={{
-                    color: "oklch(0.65 0.2 27)",
-                    background: "oklch(0.65 0.2 27 / 0.1)",
-                    border: "1px solid oklch(0.65 0.2 27 / 0.2)",
+                    background: "oklch(0.72 0.13 218)",
+                    color: "oklch(0.135 0.025 248)",
                   }}
-                  data-ocid="admin.error_state"
+                  data-ocid="admin.submit_button"
                 >
-                  {error}
-                </p>
-              )}
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : null}
+                  {loading ? "Wird geprüft…" : "Admin-Zugang"}
+                </button>
+              </form>
+            </div>
+          )}
 
-              <button
-                type="submit"
-                disabled={loading || !password}
-                className="w-full py-2.5 rounded-xl text-base font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-                style={{
-                  background: "oklch(0.72 0.13 218)",
-                  color: "oklch(0.135 0.025 248)",
-                }}
-                data-ocid="admin.submit_button"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                {loading ? "Wird gepr\u00fcft\u2026" : "Admin-Zugang"}
-              </button>
-            </form>
-
-            {visitorCount !== null && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className="mt-6 p-6 rounded-xl text-center"
+          {/* Admin dashboard – only shown after successful login */}
+          {visitorCount !== null && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Visitor count */}
+              <div
+                className="mb-8 p-6 rounded-2xl text-center"
                 style={{
                   background: "oklch(0.72 0.13 218 / 0.08)",
                   border: "1px solid oklch(0.72 0.13 218 / 0.25)",
@@ -351,16 +438,8 @@ export default function AdminPage() {
                 >
                   {visitorCount.toString()}
                 </p>
-              </motion.div>
-            )}
-          </div>
+              </div>
 
-          {visitorCount !== null && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
               {/* Crypto addresses */}
               <div
                 className="p-8 rounded-2xl mb-6"
@@ -381,7 +460,7 @@ export default function AdminPage() {
                   style={{ color: "oklch(0.73 0.03 235)" }}
                 >
                   Tragen Sie die Empfangsadressen und den geforderten Betrag je
-                  W\u00e4hrung ein.
+                  Währung ein.
                 </p>
                 <form onSubmit={handleSaveAddresses} className="space-y-5">
                   {cryptoRows.map(
@@ -490,7 +569,7 @@ export default function AdminPage() {
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : null}
                     {savingAddresses
-                      ? "Wird gespeichert\u2026"
+                      ? "Wird gespeichert…"
                       : "Adressen speichern"}
                   </button>
                 </form>
@@ -571,7 +650,7 @@ export default function AdminPage() {
                       style={{ color: "oklch(0.72 0.13 218)" }}
                     />
                   </div>
-                ) : paymentRequests.length === 0 ? (
+                ) : sortedPaymentRequests.length === 0 ? (
                   <div
                     className="text-center py-8"
                     data-ocid="admin.payments.empty_state"
@@ -585,7 +664,7 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {paymentRequests.map((req, i) => (
+                    {sortedPaymentRequests.map((req, i) => (
                       <div
                         key={`${req.nickname}-${i}`}
                         className="p-5 rounded-xl"
@@ -607,7 +686,7 @@ export default function AdminPage() {
                               className="text-sm"
                               style={{ color: "oklch(0.73 0.03 235)" }}
                             >
-                              W\u00e4hrung: <strong>{req.currency}</strong>
+                              Währung: <strong>{req.currency}</strong>
                             </p>
                             <p
                               className="text-sm font-mono"
@@ -615,46 +694,73 @@ export default function AdminPage() {
                             >
                               TX:{" "}
                               {req.txHash.length > 20
-                                ? `${req.txHash.slice(0, 20)}\u2026`
+                                ? `${req.txHash.slice(0, 20)}…`
                                 : req.txHash}
+                            </p>
+                            <p
+                              className="text-sm"
+                              style={{ color: "oklch(0.55 0.02 235)" }}
+                            >
+                              {new Date(
+                                Number(req.submittedAt) / 1_000_000,
+                              ).toLocaleString("de-DE")}
                             </p>
                             <StatusBadge status={req.status} />
                           </div>
-                          {req.status === "pending" && (
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleApprove(req.nickname)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
-                                style={{
-                                  background: "oklch(0.55 0.15 145 / 0.15)",
-                                  color: "oklch(0.55 0.15 145)",
-                                  border:
-                                    "1px solid oklch(0.55 0.15 145 / 0.3)",
-                                }}
-                                data-ocid={
-                                  `admin.approve_button.${i + 1}` as string
-                                }
-                              >
-                                <CheckCircle className="w-4 h-4" /> Genehmigen
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleReject(req.nickname)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
-                                style={{
-                                  background: "oklch(0.62 0.22 25 / 0.12)",
-                                  color: "oklch(0.62 0.22 25)",
-                                  border: "1px solid oklch(0.62 0.22 25 / 0.3)",
-                                }}
-                                data-ocid={
-                                  `admin.reject_button.${i + 1}` as string
-                                }
-                              >
-                                <XCircle className="w-4 h-4" /> Ablehnen
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {req.status === "pending" && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApprove(req.nickname)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                  style={{
+                                    background: "oklch(0.55 0.15 145 / 0.15)",
+                                    color: "oklch(0.55 0.15 145)",
+                                    border:
+                                      "1px solid oklch(0.55 0.15 145 / 0.3)",
+                                  }}
+                                  data-ocid={
+                                    `admin.approve_button.${i + 1}` as string
+                                  }
+                                >
+                                  <CheckCircle className="w-4 h-4" /> Genehmigen
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReject(req.nickname)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                  style={{
+                                    background: "oklch(0.62 0.22 25 / 0.12)",
+                                    color: "oklch(0.62 0.22 25)",
+                                    border:
+                                      "1px solid oklch(0.62 0.22 25 / 0.3)",
+                                  }}
+                                  data-ocid={
+                                    `admin.reject_button.${i + 1}` as string
+                                  }
+                                >
+                                  <XCircle className="w-4 h-4" /> Ablehnen
+                                </button>
+                              </>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleGrantAccess(req.nickname)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                              style={{
+                                background: "oklch(0.50 0.15 145 / 0.15)",
+                                color: "oklch(0.50 0.15 145)",
+                                border: "1px solid oklch(0.50 0.15 145 / 0.3)",
+                              }}
+                              data-ocid={
+                                `admin.grant_access.button.${i + 1}` as string
+                              }
+                            >
+                              <CheckCircle className="w-4 h-4" />{" "}
+                              Musterschreiben freischalten
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}

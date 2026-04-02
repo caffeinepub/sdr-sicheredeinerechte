@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { ChevronRight, FileCheck, Lock, Scale, Shield } from "lucide-react";
+import { FileCheck, Lock, Scale, Shield } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { backend } from "../backendActor";
@@ -19,7 +19,6 @@ export default function LandingPage() {
     }
     backend.incrementVisitorCount().catch(() => null);
 
-    // Heartbeat for real-time visitor tracking
     const token = `anon-${Math.random().toString(36).slice(2)}`;
     backend.recordHeartbeat(token).catch(() => null);
     const interval = setInterval(() => {
@@ -30,7 +29,6 @@ export default function LandingPage() {
 
   const handleAdminAccess = () => {
     if (adminPwInput === "WotanClan44!") {
-      // Store the password so AdminPage can auto-authenticate without a second prompt
       sessionStorage.setItem("adminPw", adminPwInput);
       setShowAdminModal(false);
       setAdminPwInput("");
@@ -46,7 +44,6 @@ export default function LandingPage() {
       className="min-h-screen"
       style={{ background: "oklch(0.135 0.025 248)" }}
     >
-      {/* Admin Password Modal */}
       {showAdminModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"
@@ -95,9 +92,7 @@ export default function LandingPage() {
               className="w-full px-4 py-2.5 rounded-xl text-base mb-3 outline-none"
               style={{
                 background: "oklch(0.13 0.03 248)",
-                border: `1px solid ${
-                  adminPwError ? "oklch(0.65 0.2 27)" : "oklch(0.27 0.055 248)"
-                }`,
+                border: `1px solid ${adminPwError ? "oklch(0.65 0.2 27)" : "oklch(0.27 0.055 248)"}`,
                 color: "oklch(0.96 0.015 230)",
               }}
               data-ocid="admin_access.input"
@@ -155,7 +150,6 @@ export default function LandingPage() {
         }}
       >
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* Logo */}
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -185,8 +179,8 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-3">
+          {/* Anmelden button only, aligned right */}
+          <div className="flex items-center">
             <button
               type="button"
               onClick={() =>
@@ -209,34 +203,10 @@ export default function LandingPage() {
             >
               Anmelden
             </button>
-            <button
-              type="button"
-              onClick={() =>
-                navigate({ to: "/auth", search: { tab: "register" } })
-              }
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-base font-semibold transition-all"
-              style={{
-                background: "oklch(0.72 0.13 218)",
-                color: "oklch(0.135 0.025 248)",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.76 0.13 218)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.72 0.13 218)";
-              }}
-              data-ocid="nav.register.button"
-            >
-              Jetzt registrieren
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
       <main>
         <section
           className="relative pt-24 pb-20 px-6 overflow-hidden"
@@ -245,7 +215,6 @@ export default function LandingPage() {
               "radial-gradient(ellipse 90% 60% at 50% 0%, oklch(0.72 0.13 218 / 0.1) 0%, transparent 65%)",
           }}
         >
-          {/* Decorative grid */}
           <div
             className="absolute inset-0 opacity-[0.04]"
             style={{
@@ -329,17 +298,20 @@ export default function LandingPage() {
               </p>
 
               <p className="text-lg sm:text-xl leading-relaxed">
-                Sind Sie bereit, Ihre nächsten Schritte nicht dem Zufall zu
-                überlassen, sondern auf fundiertes Wissen und durchdachte
-                Vorgehensweisen zu setzen?
+                <strong>
+                  Sind Sie bereit, Ihre nächsten Schritte nicht dem Zufall zu
+                  überlassen, sondern auf fundiertes Wissen und durchdachte
+                  Vorgehensweisen zu setzen?
+                </strong>
               </p>
             </motion.div>
 
+            {/* Hero button — only Jetzt registrieren, centered */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
-              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
+              className="mt-10 flex items-center justify-center"
             >
               <button
                 type="button"
@@ -370,35 +342,9 @@ export default function LandingPage() {
                 <Shield className="w-5 h-5" />
                 Jetzt registrieren
               </button>
-              <button
-                type="button"
-                onClick={() =>
-                  navigate({ to: "/auth", search: { tab: "login" } })
-                }
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-medium transition-all"
-                style={{
-                  color: "oklch(0.73 0.03 235)",
-                  border: "1px solid oklch(0.27 0.055 248)",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color =
-                    "oklch(0.96 0.015 230)";
-                  (e.currentTarget as HTMLButtonElement).style.borderColor =
-                    "oklch(0.72 0.13 218 / 0.5)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color =
-                    "oklch(0.73 0.03 235)";
-                  (e.currentTarget as HTMLButtonElement).style.borderColor =
-                    "oklch(0.27 0.055 248)";
-                }}
-                data-ocid="hero.login.secondary_button"
-              >
-                Bereits registriert? Anmelden
-              </button>
             </motion.div>
 
-            {/* Quote under hero buttons */}
+            {/* Quote under hero button — 30% bigger, blue */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -406,10 +352,13 @@ export default function LandingPage() {
               className="mt-10 max-w-2xl mx-auto"
             >
               <p
-                className="text-lg sm:text-xl italic leading-relaxed"
-                style={{ color: "oklch(0.73 0.03 235)" }}
+                className="italic leading-relaxed"
+                style={{
+                  fontSize: "calc(1.125rem * 1.3)",
+                  color: "oklch(0.72 0.13 218)",
+                }}
               >
-                „Man kann den Wind nicht ändern, aber die Segel anders setzen.“
+                „Man kann den Wind nicht ändern, aber die Segel anders setzen."
               </p>
               <p
                 className="mt-2 text-base"

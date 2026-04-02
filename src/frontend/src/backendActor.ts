@@ -18,7 +18,6 @@ async function getRawActor(): Promise<
   import("@icp-sdk/core/agent").ActorSubclass<_SERVICE>
 > {
   if (rawActorInstance) return rawActorInstance;
-  // Load config to get canister id and host
   const { loadConfig } = await import("./config");
   const config = await loadConfig();
   const agent = new HttpAgent({ host: config.backend_host });
@@ -45,11 +44,20 @@ function fromCandidOpt<T>(opt: [] | [T]): T | null {
   return opt.length === 0 ? null : opt[0];
 }
 
+// Convert Candid variant { ok: T } | { error: string } to plain { ok: T } | { error: string }
+// so that AuthPage's "error" in result check works correctly
+function fromCandidResultPlain<T>(
+  v: { ok: T } | { error: string },
+): { ok: T } | { error: string } {
+  if ("ok" in v) return { ok: (v as { ok: T }).ok };
+  return { error: (v as { error: string }).error };
+}
+
 // Convert Candid variant { ok: T } | { error: string } to __kind__ tagged union
 function fromCandidResult<T>(
   v: { ok: T } | { error: string },
 ): { __kind__: "ok"; ok: T } | { __kind__: "error"; error: string } {
-  if ("ok" in v) return { __kind__: "ok", ok: v.ok };
+  if ("ok" in v) return { __kind__: "ok", ok: (v as { ok: T }).ok };
   return { __kind__: "error", error: (v as { error: string }).error };
 }
 
@@ -64,10 +72,15 @@ function fromCandidPaymentRecord(r: PaymentRequestRecord): PaymentRequest {
   };
 }
 
-// Methods that are NOT in the generated Backend class and need raw actor calls
+// ALL methods that should use the raw actor directly (no processError wrapper)
+// login and register are included here so they never throw exceptions on backend errors
 const RAW_METHODS = new Set([
+  "login",
+  "register",
   "recordHeartbeat",
   "getActiveVisitorCount",
+  "getVisitorCount",
+  "incrementVisitorCount",
   "setCryptoAddress",
   "getCryptoAddresses",
   "submitPaymentProof",
@@ -84,7 +97,7 @@ const RAW_METHODS = new Set([
 export const backend: backendInterface = new Proxy({} as backendInterface, {
   get(_target, prop: string) {
     if (!RAW_METHODS.has(prop)) {
-      // Use wrapper actor (Backend class) for legacy methods with __kind__ conversions
+      // Use wrapper actor (Backend class) for other methods
       return (...args: unknown[]) =>
         getWrapperActor().then((actor) =>
           (actor as unknown as Record<string, (...a: unknown[]) => unknown>)[
@@ -93,7 +106,7 @@ export const backend: backendInterface = new Proxy({} as backendInterface, {
         );
     }
 
-    // Use raw actor for new methods, then convert Candid types
+    // Use raw actor for all critical methods - no processError, no thrown exceptions
     return (...args: unknown[]) =>
       getRawActor().then(async (actor) => {
         const fn = (
@@ -104,23 +117,29 @@ export const backend: backendInterface = new Proxy({} as backendInterface, {
         }
         const result = await fn(...args);
 
-        // Convert raw Candid responses to the types expected by pages
         switch (prop) {
+          // Auth methods: return plain { ok } | { error } so AuthPage checks work
+          case "login":
+          case "register":
+            return fromCandidResultPlain(
+              result as { ok: unknown } | { error: string },
+            );
+
           case "recordHeartbeat":
+          case "incrementVisitorCount":
             return result;
 
           case "getActiveVisitorCount":
+          case "getVisitorCount":
           case "approvePayment":
           case "rejectPayment":
           case "grantMusterschreibenAccess":
           case "revokeMusterschreibenAccess":
           case "setCryptoAddress":
+          case "submitPaymentProof":
             return fromCandidResult(
               result as { ok: unknown } | { error: string },
             );
-
-          case "submitPaymentProof":
-            return fromCandidResult(result as { ok: null } | { error: string });
 
           case "getMyPaymentStatus": {
             const opt = result as [] | [PaymentRequestRecord];

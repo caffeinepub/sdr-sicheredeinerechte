@@ -1,12 +1,13 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { backend } from "../backendActor";
 import { getSession } from "../utils/auth";
 
 export default function WelcomePage() {
   const navigate = useNavigate();
+  const [nickname, setNickname] = useState("");
 
   useEffect(() => {
     const session = getSession();
@@ -14,8 +15,8 @@ export default function WelcomePage() {
       navigate({ to: "/" });
       return;
     }
+    setNickname(session.nickname ?? "");
 
-    // Heartbeat for real-time visitor tracking
     const token = `${session.nickname}-${Date.now()}`;
     backend.recordHeartbeat(token).catch(() => null);
     const interval = setInterval(() => {
@@ -116,9 +117,15 @@ export default function WelcomePage() {
 
             <h1
               className="font-display font-bold text-3xl sm:text-4xl lg:text-5xl leading-tight mb-8"
-              style={{ color: "oklch(0.72 0.13 218)" }}
+              style={{ color: "oklch(0.96 0.015 230)" }}
             >
-              Herzlich willkommen bei SDR – SichereDeineRechte!
+              Willkommen,{" "}
+              {nickname && (
+                <span style={{ color: "oklch(0.72 0.13 218)" }}>
+                  {nickname}
+                </span>
+              )}{" "}
+              bei SDR – SichereDeineRechte!
             </h1>
 
             <div
@@ -153,14 +160,17 @@ export default function WelcomePage() {
             </div>
           </div>
 
-          {/* Quote above action buttons */}
+          {/* Quote above action buttons — 20% bigger, blue, bold */}
           <div className="mb-8 text-center">
             <p
-              className="text-lg sm:text-xl italic leading-relaxed"
-              style={{ color: "oklch(0.73 0.03 235)" }}
+              className="italic leading-relaxed font-bold"
+              style={{
+                fontSize: "calc(1.25rem * 1.2)",
+                color: "oklch(0.72 0.13 218)",
+              }}
             >
               „Wer immer nur reagiert, hat sein Leben schon aus der Hand
-              gegeben.“
+              gegeben."
             </p>
             <p
               className="mt-2 text-base"
@@ -227,25 +237,25 @@ export default function WelcomePage() {
               onClick={() => navigate({ to: "/app" })}
               className="flex-1 py-5 px-8 rounded-xl text-lg font-bold transition-all"
               style={{
-                background: "oklch(0.62 0.22 25)",
-                color: "oklch(0.97 0.01 80)",
-                boxShadow: "0 0 20px oklch(0.62 0.22 25 / 0.3)",
+                background: "oklch(0.72 0.13 218)",
+                color: "oklch(0.135 0.025 248)",
+                boxShadow: "0 0 20px oklch(0.72 0.13 218 / 0.3)",
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.66 0.22 25)";
+                  "oklch(0.76 0.13 218)";
                 (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 0 28px oklch(0.62 0.22 25 / 0.45)";
+                  "0 0 28px oklch(0.72 0.13 218 / 0.45)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLButtonElement).style.background =
-                  "oklch(0.62 0.22 25)";
+                  "oklch(0.72 0.13 218)";
                 (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 0 20px oklch(0.62 0.22 25 / 0.3)";
+                  "0 0 20px oklch(0.72 0.13 218 / 0.3)";
               }}
               data-ocid="welcome.musterschreiben.secondary_button"
             >
-              Musterschreiben / Dein persönlicher Bereich
+              Musterschreiben
             </button>
           </div>
         </motion.div>

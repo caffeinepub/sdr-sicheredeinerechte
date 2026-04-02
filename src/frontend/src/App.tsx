@@ -25,13 +25,11 @@ const indexRoute = createRoute({
   component: LandingPage,
 });
 
+// No validateSearch here – AuthPage reads URL params directly via window.location.search
 const authRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/auth",
   component: AuthPage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: typeof search.tab === "string" ? search.tab : undefined,
-  }),
 });
 
 const appRoute = createRoute({

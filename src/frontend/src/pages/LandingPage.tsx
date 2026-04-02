@@ -230,16 +230,19 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <div
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold uppercase tracking-wider mb-8"
-                style={{
-                  background: "oklch(0.72 0.13 218 / 0.12)",
-                  border: "1px solid oklch(0.72 0.13 218 / 0.3)",
-                  color: "oklch(0.72 0.13 218)",
-                }}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                Dezentral · Sicher · Transparent
+              {/* Badge — centered */}
+              <div className="flex justify-center mb-8">
+                <div
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold uppercase tracking-wider"
+                  style={{
+                    background: "oklch(0.72 0.13 218 / 0.12)",
+                    border: "1px solid oklch(0.72 0.13 218 / 0.3)",
+                    color: "oklch(0.72 0.13 218)",
+                  }}
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  Dezentral · Sicher · Transparent
+                </div>
               </div>
 
               {/* Logo block — left-aligned, double the size of the header logo */}
@@ -277,21 +280,28 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="max-w-3xl space-y-5 text-left"
+              className="max-w-3xl mx-auto space-y-5 text-center"
               style={{ color: "oklch(0.85 0.02 235)" }}
             >
               <p className="text-lg sm:text-xl leading-relaxed">
                 Fühlen Sie sich von Forderungen sogenannter Behörden oder Ämter
                 unter Druck gesetzt? Fragen Sie sich, ob diese Ansprüche
                 überhaupt rechtmäßig sind? Reagieren Sie noch – oder agieren Sie
-                schon bewusst und informiert? Ist Ihnen klar, dass Sie durch
-                gezieltes Agieren die Verantwortlichen hinter solchen
-                Forderungen in die Haftung nehmen könnte? Möchten Sie wissen,
-                wie Sie eine Zahlung leisten könnte, ohne dabei Ihre Rechte
-                aufzugeben? Suchen Sie nach einer Möglichkeit, unter Vorbehalt
-                zu handeln, ohne sich unwissentlich zu verpflichten? Und stellen
-                Sie sich die entscheidende Frage: Gibt es einen sicheren Weg,
-                mit solchen Forderungen umzugehen, ohne Nachteile zu riskieren?
+                schon bewusst und informiert?
+              </p>
+
+              <p className="text-lg sm:text-xl leading-relaxed">
+                Ist Ihnen klar, dass Sie durch gezieltes Agieren die
+                Verantwortlichen hinter diesen Forderungen in die Haftung nehmen
+                könnten? Möchten Sie wissen, wie Sie eine Zahlung leisten
+                könnten, ohne dabei Ihre Rechte aufzugeben?
+              </p>
+
+              <p className="text-lg sm:text-xl leading-relaxed">
+                Suchen Sie nach einer Möglichkeit, unter Vorbehalt zu handeln,
+                ohne sich unwissentlich zu verpflichten? Und stellen Sie sich
+                die entscheidende Frage: Gibt es einen sicheren Weg, mit solchen
+                Forderungen umzugehen, ohne Nachteile zu riskieren?
               </p>
 
               <p className="text-lg sm:text-xl leading-relaxed">
@@ -326,7 +336,7 @@ export default function LandingPage() {
               </p>
             </motion.div>
 
-            {/* Hero button — only Jetzt registrieren, centered */}
+            {/* Hero button — Jetzt registrieren, centered */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -364,12 +374,12 @@ export default function LandingPage() {
               </button>
             </motion.div>
 
-            {/* Quote under hero button — 30% bigger, blue */}
+            {/* Quote under hero button — 30% bigger, blue, centered */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.45 }}
-              className="mt-10 max-w-2xl"
+              className="mt-10 max-w-2xl mx-auto text-center"
             >
               <p
                 className="italic leading-relaxed"

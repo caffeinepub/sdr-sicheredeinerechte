@@ -276,12 +276,17 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
+            {/* Text block — left-aligned with 7.5cm left indent */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="max-w-3xl mx-auto space-y-5 text-center"
-              style={{ color: "oklch(0.85 0.02 235)" }}
+              className="space-y-5"
+              style={{
+                color: "oklch(0.85 0.02 235)",
+                paddingLeft: "7.5cm",
+                textAlign: "left",
+              }}
             >
               <p className="text-lg sm:text-xl leading-relaxed">
                 Fühlen Sie sich von Forderungen sogenannter Behörden oder Ämter
@@ -292,7 +297,7 @@ export default function LandingPage() {
 
               <p className="text-lg sm:text-xl leading-relaxed">
                 Ist Ihnen klar, dass Sie durch gezieltes Agieren die
-                Verantwortlichen hinter diesen Forderungen in die Haftung nehmen
+                Verantwortlichen hinter diesen Ansprüchen in die Haftung nehmen
                 könnten? Möchten Sie wissen, wie Sie eine Zahlung leisten
                 könnten, ohne dabei Ihre Rechte aufzugeben?
               </p>
@@ -300,23 +305,16 @@ export default function LandingPage() {
               <p className="text-lg sm:text-xl leading-relaxed">
                 Suchen Sie nach einer Möglichkeit, unter Vorbehalt zu handeln,
                 ohne sich unwissentlich zu verpflichten? Und stellen Sie sich
-                die entscheidende Frage: Gibt es einen sicheren Weg, mit solchen
+                die entscheidende Frage: Gibt es einen Weg, mit solchen
                 Forderungen umzugehen, ohne Nachteile zu riskieren?
               </p>
 
               <p className="text-lg sm:text-xl leading-relaxed">
-                Stehen Sie vor genau diesen Fragen und suchen nach klaren,
+                Stehen Sie vor genau diesen Fragen und suchen Sie nach klaren,
                 verständlichen Antworten? Möchten Sie nicht länger im Ungewissen
                 bleiben, sondern Ihre Situation souverän einschätzen können?
                 Fragen Sie sich, wie Sie strukturiert und rechtssicher mit
-                solchen Forderungen umgehen können?
-              </p>
-
-              <p
-                className="text-xl sm:text-2xl font-display font-bold py-2"
-                style={{ color: "oklch(0.72 0.13 218)" }}
-              >
-                Genau hier setzt SDR (SichereDeineRechte) an.
+                solchen Herausforderungen umgehen können?
               </p>
 
               <p className="text-lg sm:text-xl leading-relaxed">

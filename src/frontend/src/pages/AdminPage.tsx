@@ -3,6 +3,9 @@ import { Label } from "@/components/ui/label";
 import {
   Activity,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Copy,
   Loader2,
   Shield,
   Users,
@@ -71,6 +74,8 @@ export default function AdminPage() {
   const [savingAddresses, setSavingAddresses] = useState(false);
   const [addressMsg, setAddressMsg] = useState("");
   const [addressError, setAddressError] = useState("");
+  const [showPayments, setShowPayments] = useState(false);
+  const [copiedTx, setCopiedTx] = useState("");
 
   const loadActiveCount = async () => {
     setActiveLoading(true);
@@ -258,7 +263,7 @@ export default function AdminPage() {
   ];
 
   const sortedPaymentRequests = [...paymentRequests].sort(
-    (a, b) => Number(a.submittedAt) - Number(b.submittedAt),
+    (a, b) => Number(b.submittedAt) - Number(a.submittedAt),
   );
 
   if (!isAuthenticated) {
@@ -547,190 +552,245 @@ export default function AdminPage() {
 
             {/* Payment requests */}
             <div
-              className="p-8 rounded-2xl"
+              className="rounded-2xl overflow-hidden"
               style={{
                 background: "oklch(0.17 0.03 248)",
                 border: "1px solid oklch(0.27 0.055 248)",
               }}
               data-ocid="admin.payments.panel"
             >
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2
-                    className="font-bold text-xl"
-                    style={{ color: "oklch(0.96 0.015 230)" }}
-                  >
-                    Ausgleich-Bestätigungen
-                  </h2>
-                  <p
-                    className="text-base"
-                    style={{ color: "oklch(0.73 0.03 235)" }}
-                  >
-                    Eingegangene Ausgleiche prüfen und Musterschreiben
-                    freischalten
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={loadPaymentRequests}
-                  className="px-4 py-2 rounded-lg text-base font-medium transition-all"
-                  style={{
-                    color: "oklch(0.72 0.13 218)",
-                    border: "1px solid oklch(0.72 0.13 218 / 0.35)",
-                  }}
-                  data-ocid="admin.refresh_payments.button"
-                >
-                  Aktualisieren
-                </button>
-              </div>
-
-              {paymentMsg && (
-                <p
-                  className="mb-4 text-base py-2 px-3 rounded-lg"
-                  style={{
-                    color: "oklch(0.55 0.15 145)",
-                    background: "oklch(0.55 0.15 145 / 0.1)",
-                    border: "1px solid oklch(0.55 0.15 145 / 0.2)",
-                  }}
-                  data-ocid="admin.payment_action.success_state"
-                >
-                  {paymentMsg}
-                </p>
-              )}
-              {paymentError && (
-                <p
-                  className="mb-4 text-base py-2 px-3 rounded-lg"
-                  style={{
-                    color: "oklch(0.65 0.2 27)",
-                    background: "oklch(0.65 0.2 27 / 0.1)",
-                    border: "1px solid oklch(0.65 0.2 27 / 0.2)",
-                  }}
-                  data-ocid="admin.payment_action.error_state"
-                >
-                  {paymentError}
-                </p>
-              )}
-
-              {loadingPayments ? (
-                <div
-                  className="flex items-center justify-center py-8"
-                  data-ocid="admin.payments.loading_state"
-                >
-                  <Loader2
-                    className="w-6 h-6 animate-spin"
+              <button
+                type="button"
+                onClick={() => setShowPayments((prev) => !prev)}
+                className="w-full flex items-center justify-between px-8 py-5 transition-all"
+                style={{
+                  background: "oklch(0.17 0.03 248)",
+                  color: "oklch(0.96 0.015 230)",
+                }}
+                data-ocid="admin.payments.toggle"
+              >
+                <span className="font-bold text-xl">Zahlungseingänge</span>
+                {showPayments ? (
+                  <ChevronUp
+                    className="w-5 h-5"
                     style={{ color: "oklch(0.72 0.13 218)" }}
                   />
-                </div>
-              ) : sortedPaymentRequests.length === 0 ? (
-                <div
-                  className="text-center py-8"
-                  data-ocid="admin.payments.empty_state"
-                >
-                  <p
-                    className="text-base"
-                    style={{ color: "oklch(0.73 0.03 235)" }}
-                  >
-                    Keine Ausgleich-Bestätigungen vorhanden.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {sortedPaymentRequests.map((req, i) => (
-                    <div
-                      key={`${req.nickname}-${i}`}
-                      className="p-5 rounded-xl"
-                      style={{
-                        background: "oklch(0.13 0.025 248)",
-                        border: "1px solid oklch(0.27 0.055 248)",
-                      }}
-                      data-ocid={`admin.payment.item.${i + 1}` as string}
+                ) : (
+                  <ChevronDown
+                    className="w-5 h-5"
+                    style={{ color: "oklch(0.72 0.13 218)" }}
+                  />
+                )}
+              </button>
+              {showPayments && (
+                <div className="px-8 pb-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <p
+                      className="text-base"
+                      style={{ color: "oklch(0.73 0.03 235)" }}
                     >
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="space-y-1">
-                          <p
-                            className="font-bold text-base"
-                            style={{ color: "oklch(0.96 0.015 230)" }}
-                          >
-                            {req.nickname}
-                          </p>
-                          <p
-                            className="text-sm"
-                            style={{ color: "oklch(0.73 0.03 235)" }}
-                          >
-                            Kryptowährung: <strong>{req.currency}</strong>
-                          </p>
-                          <p
-                            className="text-sm font-mono break-all"
-                            style={{ color: "oklch(0.73 0.03 235)" }}
-                          >
-                            TX-ID: {req.txHash}
-                          </p>
-                          <p
-                            className="text-sm"
-                            style={{ color: "oklch(0.55 0.02 235)" }}
-                          >
-                            {new Date(
-                              Number(req.submittedAt) / 1_000_000,
-                            ).toLocaleString("de-DE")}
-                          </p>
-                          <StatusBadge status={req.status} />
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {req.status === "pending" && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleApprove(req.nickname)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
-                                style={{
-                                  background: "oklch(0.55 0.15 145 / 0.15)",
-                                  color: "oklch(0.55 0.15 145)",
-                                  border:
-                                    "1px solid oklch(0.55 0.15 145 / 0.3)",
-                                }}
-                                data-ocid={
-                                  `admin.approve_button.${i + 1}` as string
-                                }
-                              >
-                                <CheckCircle className="w-4 h-4" /> Genehmigen
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleReject(req.nickname)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
-                                style={{
-                                  background: "oklch(0.62 0.22 25 / 0.12)",
-                                  color: "oklch(0.62 0.22 25)",
-                                  border: "1px solid oklch(0.62 0.22 25 / 0.3)",
-                                }}
-                                data-ocid={
-                                  `admin.reject_button.${i + 1}` as string
-                                }
-                              >
-                                <XCircle className="w-4 h-4" /> Ablehnen
-                              </button>
-                            </>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleGrantAccess(req.nickname)}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
-                            style={{
-                              background: "oklch(0.50 0.15 145 / 0.15)",
-                              color: "oklch(0.50 0.15 145)",
-                              border: "1px solid oklch(0.50 0.15 145 / 0.3)",
-                            }}
-                            data-ocid={
-                              `admin.grant_access.button.${i + 1}` as string
-                            }
-                          >
-                            <CheckCircle className="w-4 h-4" /> Musterschreiben
-                            freischalten
-                          </button>
-                        </div>
-                      </div>
+                      Eingegangene Ausgleiche prüfen und Musterschreiben
+                      freischalten
+                    </p>
+                    <button
+                      type="button"
+                      onClick={loadPaymentRequests}
+                      className="px-4 py-2 rounded-lg text-base font-medium transition-all"
+                      style={{
+                        color: "oklch(0.72 0.13 218)",
+                        border: "1px solid oklch(0.72 0.13 218 / 0.35)",
+                      }}
+                      data-ocid="admin.refresh_payments.button"
+                    >
+                      Aktualisieren
+                    </button>
+                  </div>
+
+                  {paymentMsg && (
+                    <p
+                      className="mb-4 text-base py-2 px-3 rounded-lg"
+                      style={{
+                        color: "oklch(0.55 0.15 145)",
+                        background: "oklch(0.55 0.15 145 / 0.1)",
+                        border: "1px solid oklch(0.55 0.15 145 / 0.2)",
+                      }}
+                      data-ocid="admin.payment_action.success_state"
+                    >
+                      {paymentMsg}
+                    </p>
+                  )}
+                  {paymentError && (
+                    <p
+                      className="mb-4 text-base py-2 px-3 rounded-lg"
+                      style={{
+                        color: "oklch(0.65 0.2 27)",
+                        background: "oklch(0.65 0.2 27 / 0.1)",
+                        border: "1px solid oklch(0.65 0.2 27 / 0.2)",
+                      }}
+                      data-ocid="admin.payment_action.error_state"
+                    >
+                      {paymentError}
+                    </p>
+                  )}
+
+                  {loadingPayments ? (
+                    <div
+                      className="flex items-center justify-center py-8"
+                      data-ocid="admin.payments.loading_state"
+                    >
+                      <Loader2
+                        className="w-6 h-6 animate-spin"
+                        style={{ color: "oklch(0.72 0.13 218)" }}
+                      />
                     </div>
-                  ))}
+                  ) : sortedPaymentRequests.length === 0 ? (
+                    <div
+                      className="text-center py-8"
+                      data-ocid="admin.payments.empty_state"
+                    >
+                      <p
+                        className="text-base"
+                        style={{ color: "oklch(0.73 0.03 235)" }}
+                      >
+                        Keine Ausgleich-Bestätigungen vorhanden.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {sortedPaymentRequests.map((req, i) => (
+                        <div
+                          key={`${req.nickname}-${i}`}
+                          className="p-5 rounded-xl"
+                          style={{
+                            background: "oklch(0.13 0.025 248)",
+                            border: "1px solid oklch(0.27 0.055 248)",
+                          }}
+                          data-ocid={`admin.payment.item.${i + 1}` as string}
+                        >
+                          <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div className="space-y-1">
+                              <p
+                                className="font-bold text-base"
+                                style={{ color: "oklch(0.96 0.015 230)" }}
+                              >
+                                {req.nickname}
+                              </p>
+                              <p
+                                className="text-sm"
+                                style={{ color: "oklch(0.73 0.03 235)" }}
+                              >
+                                Kryptowährung: <strong>{req.currency}</strong>
+                              </p>
+                              <div className="flex items-start gap-2 flex-wrap">
+                                <code
+                                  className="text-sm font-mono break-all flex-1"
+                                  style={{ color: "oklch(0.73 0.03 235)" }}
+                                >
+                                  TX-ID: {req.txHash}
+                                </code>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(req.txHash);
+                                    setCopiedTx(`${req.nickname}-${i}`);
+                                    setTimeout(() => setCopiedTx(""), 2000);
+                                  }}
+                                  className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all"
+                                  style={{
+                                    background:
+                                      copiedTx === `${req.nickname}-${i}`
+                                        ? "oklch(0.55 0.15 145 / 0.15)"
+                                        : "oklch(0.72 0.13 218 / 0.1)",
+                                    color:
+                                      copiedTx === `${req.nickname}-${i}`
+                                        ? "oklch(0.55 0.15 145)"
+                                        : "oklch(0.72 0.13 218)",
+                                    border:
+                                      "1px solid oklch(0.72 0.13 218 / 0.2)",
+                                  }}
+                                  data-ocid={
+                                    `admin.copy_tx.button.${i + 1}` as string
+                                  }
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  {copiedTx === `${req.nickname}-${i}`
+                                    ? "Kopiert ✓"
+                                    : "Kopieren"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleGrantAccess(req.nickname)
+                                  }
+                                  className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
+                                  style={{
+                                    background: "oklch(0.50 0.15 145 / 0.15)",
+                                    color: "oklch(0.50 0.15 145)",
+                                    border:
+                                      "1px solid oklch(0.50 0.15 145 / 0.3)",
+                                  }}
+                                  data-ocid={
+                                    `admin.grant_access.button.${i + 1}` as string
+                                  }
+                                >
+                                  <CheckCircle className="w-3 h-3" />{" "}
+                                  Musterschreiben freischalten
+                                </button>
+                              </div>
+                              <p
+                                className="text-sm"
+                                style={{ color: "oklch(0.55 0.02 235)" }}
+                              >
+                                {new Date(
+                                  Number(req.submittedAt) / 1_000_000,
+                                ).toLocaleString("de-DE")}
+                              </p>
+                              <StatusBadge status={req.status} />
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {req.status === "pending" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleApprove(req.nickname)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                    style={{
+                                      background: "oklch(0.55 0.15 145 / 0.15)",
+                                      color: "oklch(0.55 0.15 145)",
+                                      border:
+                                        "1px solid oklch(0.55 0.15 145 / 0.3)",
+                                    }}
+                                    data-ocid={
+                                      `admin.approve_button.${i + 1}` as string
+                                    }
+                                  >
+                                    <CheckCircle className="w-4 h-4" />{" "}
+                                    Genehmigen
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReject(req.nickname)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                    style={{
+                                      background: "oklch(0.62 0.22 25 / 0.12)",
+                                      color: "oklch(0.62 0.22 25)",
+                                      border:
+                                        "1px solid oklch(0.62 0.22 25 / 0.3)",
+                                    }}
+                                    data-ocid={
+                                      `admin.reject_button.${i + 1}` as string
+                                    }
+                                  >
+                                    <XCircle className="w-4 h-4" /> Ablehnen
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

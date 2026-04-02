@@ -503,6 +503,26 @@ export default function ZahlungPage() {
                     className="text-base"
                     style={{ color: "oklch(0.73 0.03 235)" }}
                   >
+                    Ihr Nickname
+                  </Label>
+                  <Input
+                    value={nickname}
+                    readOnly
+                    disabled
+                    className="text-base opacity-60 cursor-not-allowed"
+                    style={{
+                      background: "oklch(0.13 0.03 248)",
+                      border: "1px solid oklch(0.27 0.055 248)",
+                      color: "oklch(0.96 0.015 230)",
+                    }}
+                    data-ocid="zahlung.nickname.input"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label
+                    className="text-base"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
                     Kryptowährung
                   </Label>
                   <Select

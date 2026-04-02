@@ -276,7 +276,7 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
-            {/* Text block — left-aligned with 4cm left indent */}
+            {/* Text block — left-aligned with 3cm left indent */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -284,7 +284,7 @@ export default function LandingPage() {
               className="space-y-5"
               style={{
                 color: "oklch(0.85 0.02 235)",
-                paddingLeft: "4cm",
+                paddingLeft: "3cm",
                 textAlign: "left",
               }}
             >
@@ -318,8 +318,11 @@ export default function LandingPage() {
               </p>
 
               <p
-                className="text-lg sm:text-xl leading-relaxed font-bold"
-                style={{ color: "oklch(0.96 0.015 230)" }}
+                className="leading-relaxed font-bold"
+                style={{
+                  fontSize: "calc(1.125rem * 1.7)",
+                  color: "oklch(0.72 0.13 218)",
+                }}
               >
                 Genau hier setzt SDR (SichereDeineRechte) an.
               </p>

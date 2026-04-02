@@ -1,3 +1,6 @@
+// Stub – Internet Identity wird nicht verwendet.
+// Diese Datei existiert nur um Import-Fehler zu vermeiden.
+
 import { type ReactNode, createContext, useContext } from "react";
 
 export type Status =

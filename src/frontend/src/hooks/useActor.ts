@@ -1,5 +1,10 @@
-// Stub: This hook is not used for the custom nickname/password auth.
-// The app uses backendActor.ts directly for all backend calls.
-export function useActor() {
+// Stub – useActor wird nicht mehr verwendet.
+// Die App nutzt backendActor.ts direkt.
+import type { backendInterface } from "../backend";
+
+export function useActor(): {
+  actor: backendInterface | null;
+  isFetching: boolean;
+} {
   return { actor: null, isFetching: false };
 }

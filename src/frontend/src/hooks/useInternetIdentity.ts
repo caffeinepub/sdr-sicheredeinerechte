@@ -1,9 +1,7 @@
-import {
-  type ReactNode,
-  createContext,
-  createElement,
-  useContext,
-} from "react";
+// Stub – Internet Identity wird nicht verwendet.
+// Diese Datei existiert nur, damit bestehende Imports nicht brechen.
+
+import { type ReactNode, createContext, useContext } from "react";
 
 export type Status =
   | "initializing"
@@ -25,7 +23,7 @@ export type InternetIdentityContext = {
   loginError?: Error;
 };
 
-const defaultValue: InternetIdentityContext = {
+const ctx = createContext<InternetIdentityContext>({
   identity: undefined,
   login: () => {},
   clear: () => {},
@@ -36,9 +34,7 @@ const defaultValue: InternetIdentityContext = {
   isLoginSuccess: false,
   isLoginError: false,
   loginError: undefined,
-};
-
-const ctx = createContext<InternetIdentityContext>(defaultValue);
+});
 
 export const useInternetIdentity = (): InternetIdentityContext =>
   useContext(ctx);
@@ -47,6 +43,6 @@ export function InternetIdentityProvider({
   children,
 }: {
   children: ReactNode;
-}) {
-  return createElement(ctx.Provider, { value: defaultValue }, children);
+}): ReactNode {
+  return children;
 }

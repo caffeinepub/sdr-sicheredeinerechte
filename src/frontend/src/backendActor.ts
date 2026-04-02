@@ -44,15 +44,6 @@ function fromCandidOpt<T>(opt: [] | [T]): T | null {
   return opt.length === 0 ? null : opt[0];
 }
 
-// Convert Candid variant { ok: T } | { error: string } to plain { ok: T } | { error: string }
-// so that AuthPage's "error" in result check works correctly
-function fromCandidResultPlain<T>(
-  v: { ok: T } | { error: string },
-): { ok: T } | { error: string } {
-  if ("ok" in v) return { ok: (v as { ok: T }).ok };
-  return { error: (v as { error: string }).error };
-}
-
 // Convert Candid variant { ok: T } | { error: string } to __kind__ tagged union
 function fromCandidResult<T>(
   v: { ok: T } | { error: string },
@@ -118,10 +109,10 @@ export const backend: backendInterface = new Proxy({} as backendInterface, {
         const result = await fn(...args);
 
         switch (prop) {
-          // Auth methods: return plain { ok } | { error } so AuthPage checks work
+          // Auth methods: return with __kind__ so AuthModal checks work
           case "login":
           case "register":
-            return fromCandidResultPlain(
+            return fromCandidResult(
               result as { ok: unknown } | { error: string },
             );
 

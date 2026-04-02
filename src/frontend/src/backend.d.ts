@@ -1,128 +1,36 @@
 import type { Principal } from "@icp-sdk/core/principal";
-export interface Some<T> {
-    __kind__: "Some";
-    value: T;
-}
-export interface None {
-    __kind__: "None";
-}
+export interface Some<T> { __kind__: "Some"; value: T; }
+export interface None { __kind__: "None"; }
 export type Option<T> = Some<T> | None;
-export interface UserProfile {
-    name: string;
-}
-export enum UserRole {
-    admin = "admin",
-    user = "user",
-    guest = "guest"
-}
-export interface CryptoAddress {
-    currency: string;
-    address: string;
-    amount: string;
-}
-export interface PaymentRequest {
-    nickname: string;
-    currency: string;
-    txHash: string;
-    status: string;
-    submittedAt: bigint;
-}
+export interface UserProfile { name: string; }
+export enum UserRole { admin = "admin", user = "user", guest = "guest" }
+export interface CryptoAddress { currency: string; address: string; amount: string; }
+export interface PaymentRequest { nickname: string; currency: string; txHash: string; status: string; submittedAt: bigint; }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     getAllProfiles(): Promise<Array<UserProfile>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getCurrentUser(sessionToken: string): Promise<{
-        __kind__: "ok";
-        ok: string;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
+    getCurrentUser(sessionToken: string): Promise<{ __kind__: "ok"; ok: string; } | { __kind__: "error"; error: string; }>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
-    getVisitorCount(adminPasswordAttempt: string): Promise<{
-        __kind__: "ok";
-        ok: bigint;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
+    getVisitorCount(adminPasswordAttempt: string): Promise<{ __kind__: "ok"; ok: bigint; } | { __kind__: "error"; error: string; }>;
     incrementVisitorCount(): Promise<void>;
+    recordHeartbeat(sessionToken: string): Promise<void>;
+    getActiveVisitorCount(adminPasswordAttempt: string): Promise<{ __kind__: "ok"; ok: bigint; } | { __kind__: "error"; error: string; }>;
     isCallerAdmin(): Promise<boolean>;
     isRegistered(): Promise<boolean>;
-    login(nickname: string, passwordHash: string): Promise<{
-        __kind__: "ok";
-        ok: string;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
-    register(nickname: string, passwordHash: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
+    login(nickname: string, passwordHash: string): Promise<{ __kind__: "ok"; ok: string; } | { __kind__: "error"; error: string; }>;
+    register(nickname: string, passwordHash: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    setCryptoAddress(adminPw: string, currency: string, address: string, amount: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
+    setCryptoAddress(adminPw: string, currency: string, address: string, amount: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
     getCryptoAddresses(): Promise<Array<CryptoAddress>>;
-    submitPaymentProof(nickname: string, currency: string, txHash: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
+    submitPaymentProof(nickname: string, currency: string, txHash: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
     getMyPaymentStatus(nickname: string): Promise<PaymentRequest | null>;
-    getAllPaymentRequests(adminPw: string): Promise<{
-        __kind__: "ok";
-        ok: Array<PaymentRequest>;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
-    approvePayment(adminPw: string, nickname: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
-    rejectPayment(adminPw: string, nickname: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
+    getAllPaymentRequests(adminPw: string): Promise<{ __kind__: "ok"; ok: Array<PaymentRequest>; } | { __kind__: "error"; error: string; }>;
+    approvePayment(adminPw: string, nickname: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
+    rejectPayment(adminPw: string, nickname: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
     hasMusterschreibenAccess(nickname: string): Promise<boolean>;
-    grantMusterschreibenAccess(adminPw: string, nickname: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
-    revokeMusterschreibenAccess(adminPw: string, nickname: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
-    verifyBTCTransaction(txHash: string, nickname: string): Promise<{
-        __kind__: "confirmed";
-    } | {
-        __kind__: "pending";
-    } | {
-        __kind__: "error";
-        error: string;
-    }>;
+    grantMusterschreibenAccess(adminPw: string, nickname: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
+    revokeMusterschreibenAccess(adminPw: string, nickname: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
+    verifyBTCTransaction(txHash: string, nickname: string): Promise<{ __kind__: "confirmed"; } | { __kind__: "pending"; } | { __kind__: "error"; error: string; }>;
 }

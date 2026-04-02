@@ -29,6 +29,14 @@ export default function Dashboard() {
         setLoadingStatus(false);
       })
       .catch(() => setLoadingStatus(false));
+
+    // Heartbeat for real-time visitor tracking
+    const token = `${session.nickname}-${Date.now()}`;
+    backend.recordHeartbeat(token).catch(() => null);
+    const interval = setInterval(() => {
+      backend.recordHeartbeat(token).catch(() => null);
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -365,7 +373,7 @@ export default function Dashboard() {
             Politik."
           </blockquote>
           <p className="text-base" style={{ color: "oklch(0.73 0.03 235)" }}>
-            — Ernst Julius Hähnel
+            – Heinz von Foerster
           </p>
         </motion.div>
       </main>

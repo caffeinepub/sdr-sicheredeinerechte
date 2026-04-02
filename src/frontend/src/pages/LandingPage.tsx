@@ -18,6 +18,14 @@ export default function LandingPage() {
       return;
     }
     backend.incrementVisitorCount().catch(() => null);
+
+    // Heartbeat for real-time visitor tracking
+    const token = `anon-${Math.random().toString(36).slice(2)}`;
+    backend.recordHeartbeat(token).catch(() => null);
+    const interval = setInterval(() => {
+      backend.recordHeartbeat(token).catch(() => null);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [navigate]);
 
   const handleAdminAccess = () => {
@@ -388,6 +396,27 @@ export default function LandingPage() {
               >
                 Bereits registriert? Anmelden
               </button>
+            </motion.div>
+
+            {/* Quote under hero buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.45 }}
+              className="mt-10 max-w-2xl mx-auto"
+            >
+              <p
+                className="text-lg sm:text-xl italic leading-relaxed"
+                style={{ color: "oklch(0.73 0.03 235)" }}
+              >
+                „Man kann den Wind nicht ändern, aber die Segel anders setzen.“
+              </p>
+              <p
+                className="mt-2 text-base"
+                style={{ color: "oklch(0.55 0.02 235)" }}
+              >
+                – Autor unbekannt
+              </p>
             </motion.div>
           </div>
         </section>

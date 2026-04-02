@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Shield } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect } from "react";
+import { backend } from "../backendActor";
 import { getSession } from "../utils/auth";
 
 export default function WelcomePage() {
@@ -11,7 +12,16 @@ export default function WelcomePage() {
     const session = getSession();
     if (!session) {
       navigate({ to: "/" });
+      return;
     }
+
+    // Heartbeat for real-time visitor tracking
+    const token = `${session.nickname}-${Date.now()}`;
+    backend.recordHeartbeat(token).catch(() => null);
+    const interval = setInterval(() => {
+      backend.recordHeartbeat(token).catch(() => null);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [navigate]);
 
   return (
@@ -143,6 +153,23 @@ export default function WelcomePage() {
             </div>
           </div>
 
+          {/* Quote above action buttons */}
+          <div className="mb-8 text-center">
+            <p
+              className="text-lg sm:text-xl italic leading-relaxed"
+              style={{ color: "oklch(0.73 0.03 235)" }}
+            >
+              „Wer immer nur reagiert, hat sein Leben schon aus der Hand
+              gegeben.“
+            </p>
+            <p
+              className="mt-2 text-base"
+              style={{ color: "oklch(0.55 0.02 235)" }}
+            >
+              – Autor unbekannt
+            </p>
+          </div>
+
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
             <button
@@ -218,7 +245,7 @@ export default function WelcomePage() {
               }}
               data-ocid="welcome.musterschreiben.secondary_button"
             >
-              Musterschreiben / Administrative Prozesse
+              Musterschreiben / Dein persönlicher Bereich
             </button>
           </div>
         </motion.div>

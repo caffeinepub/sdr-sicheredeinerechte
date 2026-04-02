@@ -14,65 +14,30 @@ actor {
   stable let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  public type UserProfile = {
-    name : Text;
-  };
+  public type UserProfile = { name : Text };
+  type User = { nickname : Text; passwordHash : Text };
+  type Session = { nickname : Text };
+  type CryptoAddress = { currency : Text; address : Text; amount : Text };
+  type PaymentRequest = { nickname : Text; currency : Text; txHash : Text; var status : Text; submittedAt : Int };
 
-  type User = {
-    nickname : Text;
-    passwordHash : Text;
-  };
-
-  type Session = {
-    nickname : Text;
-  };
-
-  type CryptoAddress = {
-    currency : Text;
-    address : Text;
-    amount : Text;
-  };
-
-  type PaymentRequest = {
-    nickname : Text;
-    currency : Text;
-    txHash : Text;
-    var status : Text;
-    submittedAt : Int;
-  };
-
-  // Storage
   stable let users = Map.empty<Text, User>();
   stable let sessions = Map.empty<Text, Session>();
   stable let userProfiles = Map.empty<Principal, UserProfile>();
   stable var visitorCount : Nat = 0;
   let adminPassword : Text = "WotanClan44!";
 
-  // Crypto payment storage
+  stable let activeVisitors = Map.empty<Text, Int>();
   stable let cryptoAddresses = Map.empty<Text, CryptoAddress>();
   stable let paymentRequests = Map.empty<Text, PaymentRequest>();
   stable let musterschreibenAccess = Map.empty<Text, Bool>();
 
-  // ---- Existing functions ----
-
-  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    userProfiles.get(caller);
-  };
-
-  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
-    userProfiles.get(user);
-  };
-
-  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    userProfiles.add(caller, profile);
-  };
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile { userProfiles.get(caller) };
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile { userProfiles.get(user) };
+  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () { userProfiles.add(caller, profile) };
 
   public shared ({ caller }) func register(nickname : Text, passwordHash : Text) : async { #ok; #error : Text } {
-    if (users.containsKey(nickname)) {
-      return #error("Nickname already taken");
-    };
-    let user : User = { nickname = nickname; passwordHash = passwordHash };
-    users.add(nickname, user);
+    if (users.containsKey(nickname)) return #error("Nickname already taken");
+    users.add(nickname, { nickname = nickname; passwordHash = passwordHash });
     #ok;
   };
 
@@ -80,9 +45,8 @@ actor {
     switch (users.get(nickname)) {
       case (null) { #error("Invalid credentials") };
       case (?user) {
-        if (user.passwordHash != passwordHash) {
-          #error("Invalid credentials");
-        } else {
+        if (user.passwordHash != passwordHash) { #error("Invalid credentials") }
+        else {
           let sessionToken = nickname # "-" # visitorCount.toText();
           sessions.add(sessionToken, { nickname = nickname });
           #ok(sessionToken);
@@ -91,15 +55,26 @@ actor {
     };
   };
 
-  public shared ({ caller }) func incrementVisitorCount() : async () {
-    visitorCount += 1;
-  };
+  public shared ({ caller }) func incrementVisitorCount() : async () { visitorCount += 1 };
 
   public query ({ caller }) func getVisitorCount(adminPasswordAttempt : Text) : async { #ok : Nat; #error : Text } {
-    if (adminPasswordAttempt != adminPassword) {
-      return #error("Unauthorized: Invalid admin password");
-    };
+    if (adminPasswordAttempt != adminPassword) return #error("Unauthorized: Invalid admin password");
     #ok(visitorCount);
+  };
+
+  public shared ({ caller }) func recordHeartbeat(sessionToken : Text) : async () {
+    activeVisitors.add(sessionToken, Time.now());
+  };
+
+  public query func getActiveVisitorCount(adminPasswordAttempt : Text) : async { #ok : Nat; #error : Text } {
+    if (adminPasswordAttempt != adminPassword) return #error("Unauthorized");
+    let now = Time.now();
+    let fiveMinutes : Int = 5 * 60 * 1_000_000_000;
+    var count : Nat = 0;
+    for (ts in activeVisitors.values()) {
+      if (now - ts < fiveMinutes) { count += 1 };
+    };
+    #ok(count);
   };
 
   public query ({ caller }) func getCurrentUser(sessionToken : Text) : async { #ok : Text; #error : Text } {
@@ -109,15 +84,8 @@ actor {
     };
   };
 
-  public query ({ caller }) func isRegistered() : async Bool {
-    userProfiles.containsKey(caller);
-  };
-
-  public query ({ caller }) func getAllProfiles() : async [UserProfile] {
-    userProfiles.values().toArray();
-  };
-
-  // ---- Crypto payment functions ----
+  public query ({ caller }) func isRegistered() : async Bool { userProfiles.containsKey(caller) };
+  public query ({ caller }) func getAllProfiles() : async [UserProfile] { userProfiles.values().toArray() };
 
   public shared ({ caller }) func setCryptoAddress(adminPw : Text, currency : Text, address : Text, amount : Text) : async { #ok; #error : Text } {
     if (adminPw != adminPassword) return #error("Unauthorized");
@@ -125,26 +93,15 @@ actor {
     #ok;
   };
 
-  public query func getCryptoAddresses() : async [CryptoAddress] {
-    cryptoAddresses.values().toArray();
-  };
+  public query func getCryptoAddresses() : async [CryptoAddress] { cryptoAddresses.values().toArray() };
 
   public shared ({ caller }) func submitPaymentProof(nickname : Text, currency : Text, txHash : Text) : async { #ok; #error : Text } {
-    // Check user exists
     if (not users.containsKey(nickname)) return #error("User not found");
-    // Check not already paid
     switch (musterschreibenAccess.get(nickname)) {
       case (?true) { return #error("Already has access") };
       case (_) {};
     };
-    let req : PaymentRequest = {
-      nickname;
-      currency;
-      txHash;
-      var status = "pending";
-      submittedAt = Time.now();
-    };
-    paymentRequests.add(nickname, req);
+    paymentRequests.add(nickname, { nickname; currency; txHash; var status = "pending"; submittedAt = Time.now() });
     #ok;
   };
 
@@ -169,11 +126,7 @@ actor {
     if (adminPw != adminPassword) return #error("Unauthorized");
     switch (paymentRequests.get(nickname)) {
       case (null) { #error("Payment request not found") };
-      case (?req) {
-        req.status := "confirmed";
-        musterschreibenAccess.add(nickname, true);
-        #ok;
-      };
+      case (?req) { req.status := "confirmed"; musterschreibenAccess.add(nickname, true); #ok };
     };
   };
 
@@ -181,10 +134,7 @@ actor {
     if (adminPw != adminPassword) return #error("Unauthorized");
     switch (paymentRequests.get(nickname)) {
       case (null) { #error("Payment request not found") };
-      case (?req) {
-        req.status := "rejected";
-        #ok;
-      };
+      case (?req) { req.status := "rejected"; #ok };
     };
   };
 
@@ -207,39 +157,28 @@ actor {
     #ok;
   };
 
-  // HTTP outcall transform (required for http outcalls)
   public query func transform(input : HttpOutcalls.TransformationInput) : async HttpOutcalls.TransformationOutput {
     HttpOutcalls.transform(input);
   };
 
   public shared ({ caller }) func verifyBTCTransaction(txHash : Text, nickname : Text) : async { #confirmed; #pending; #error : Text } {
-    // Get the BTC address from config
     let btcAddress = switch (cryptoAddresses.get("BTC")) {
       case (null) { return #error("BTC address not configured") };
       case (?addr) { addr.address };
     };
-    // Check user has a pending payment
     switch (paymentRequests.get(nickname)) {
       case (null) { return #error("No payment request found") };
-      case (?req) {
-        if (req.status == "confirmed") return #confirmed;
-      };
+      case (?req) { if (req.status == "confirmed") return #confirmed };
     };
-    // Call blockchain.info API
     let url = "https://blockchain.info/rawtx/" # txHash;
     let response = await HttpOutcalls.httpGetRequest(url, [], transform);
-    // Simple check: if BTC address appears in response, consider confirmed
     if (response.contains(#text btcAddress)) {
       switch (paymentRequests.get(nickname)) {
-        case (?req) {
-          req.status := "confirmed";
-          musterschreibenAccess.add(nickname, true);
-        };
+        case (?req) { req.status := "confirmed"; musterschreibenAccess.add(nickname, true) };
         case (null) {};
       };
       #confirmed;
     } else if (response.contains(#text "\"hash\"")) {
-      // Transaction found but address not in outputs
       #pending;
     } else {
       #error("Transaction not found");

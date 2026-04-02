@@ -224,7 +224,7 @@ export default function LandingPage() {
             }}
           />
 
-          <div className="relative max-w-4xl mx-auto text-center">
+          <div className="relative max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -242,22 +242,42 @@ export default function LandingPage() {
                 Dezentral · Sicher · Transparent
               </div>
 
-              <h1
-                className="font-display font-bold text-4xl sm:text-5xl lg:text-6xl leading-tight mb-6"
-                style={{ color: "oklch(0.96 0.015 230)" }}
-              >
-                SDR –{" "}
-                <span style={{ color: "oklch(0.72 0.13 218)" }}>
-                  SichereDeineRechte
-                </span>
-              </h1>
+              {/* Logo block — left-aligned, double the size of the header logo */}
+              <div className="flex items-center gap-6 mb-6">
+                <div
+                  className="w-[72px] h-[72px] rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: "oklch(0.72 0.13 218 / 0.15)",
+                    border: "1px solid oklch(0.72 0.13 218 / 0.35)",
+                  }}
+                >
+                  <Shield
+                    className="w-10 h-10"
+                    style={{ color: "oklch(0.72 0.13 218)" }}
+                  />
+                </div>
+                <div className="text-left">
+                  <span
+                    className="font-display font-bold text-4xl block"
+                    style={{ color: "oklch(0.96 0.015 230)" }}
+                  >
+                    SDR
+                  </span>
+                  <span
+                    className="block text-2xl font-medium leading-tight mt-1"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    SichereDeineRechte
+                  </span>
+                </div>
+              </div>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 }}
-              className="max-w-3xl mx-auto space-y-5 text-left"
+              className="max-w-3xl space-y-5 text-left"
               style={{ color: "oklch(0.85 0.02 235)" }}
             >
               <p className="text-lg sm:text-xl leading-relaxed">
@@ -266,8 +286,8 @@ export default function LandingPage() {
                 überhaupt rechtmäßig sind? Reagieren Sie noch – oder agieren Sie
                 schon bewusst und informiert? Ist Ihnen klar, dass Sie durch
                 gezieltes Agieren die Verantwortlichen hinter solchen
-                Forderungen in die Haftung nehmen können? Möchten Sie wissen,
-                wie Sie eine Zahlung leisten können, ohne dabei Ihre Rechte
+                Forderungen in die Haftung nehmen könnte? Möchten Sie wissen,
+                wie Sie eine Zahlung leisten könnte, ohne dabei Ihre Rechte
                 aufzugeben? Suchen Sie nach einer Möglichkeit, unter Vorbehalt
                 zu handeln, ohne sich unwissentlich zu verpflichten? Und stellen
                 Sie sich die entscheidende Frage: Gibt es einen sicheren Weg,
@@ -290,11 +310,11 @@ export default function LandingPage() {
               </p>
 
               <p className="text-lg sm:text-xl leading-relaxed">
-                SDR unterstützt Sie dabei, komplexe Sachverhalte rund um
-                sogenannte behördliche Forderungen verständlich aufzubereiten
-                und zeigt Ihnen professionelle Wege auf, wie Sie informiert und
-                überlegt handeln können. Statt Unsicherheit erhalten Sie
-                Orientierung – statt bloßer Reaktion eine klare Strategie.
+                SDR zeigt Ihnen professionelle Wege auf, wie Sie komplexe
+                Sachverhalte rund um sogenannte behördliche Forderungen
+                verständlich aufarbeiten und wie Sie informiert und überlegt
+                handeln könnten. Statt Unsicherheit erhalten Sie Orientierung –
+                statt bloßer Reaktion eine klare Strategie.
               </p>
 
               <p className="text-lg sm:text-xl leading-relaxed">
@@ -349,7 +369,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.45 }}
-              className="mt-10 max-w-2xl mx-auto"
+              className="mt-10 max-w-2xl"
             >
               <p
                 className="italic leading-relaxed"

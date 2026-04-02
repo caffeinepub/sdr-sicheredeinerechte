@@ -14,6 +14,8 @@ export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface CryptoAddress { 'currency' : string; 'address' : string; 'amount' : string; }
+export interface PaymentRequestRecord { 'nickname' : string; 'currency' : string; 'txHash' : string; 'status' : string; 'submittedAt' : bigint; }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
@@ -32,6 +34,12 @@ export interface _SERVICE {
       { 'error' : string }
   >,
   'incrementVisitorCount' : ActorMethod<[], undefined>,
+  'recordHeartbeat' : ActorMethod<[string], undefined>,
+  'getActiveVisitorCount' : ActorMethod<
+    [string],
+    { 'ok' : bigint } |
+      { 'error' : string }
+  >,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isRegistered' : ActorMethod<[], boolean>,
   'login' : ActorMethod<
@@ -45,6 +53,50 @@ export interface _SERVICE {
       { 'error' : string }
   >,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setCryptoAddress' : ActorMethod<
+    [string, string, string, string],
+    { 'ok' : null } |
+      { 'error' : string }
+  >,
+  'getCryptoAddresses' : ActorMethod<[], Array<CryptoAddress>>,
+  'submitPaymentProof' : ActorMethod<
+    [string, string, string],
+    { 'ok' : null } |
+      { 'error' : string }
+  >,
+  'getMyPaymentStatus' : ActorMethod<[string], [] | [PaymentRequestRecord]>,
+  'getAllPaymentRequests' : ActorMethod<
+    [string],
+    { 'ok' : Array<PaymentRequestRecord> } |
+      { 'error' : string }
+  >,
+  'approvePayment' : ActorMethod<
+    [string, string],
+    { 'ok' : null } |
+      { 'error' : string }
+  >,
+  'rejectPayment' : ActorMethod<
+    [string, string],
+    { 'ok' : null } |
+      { 'error' : string }
+  >,
+  'hasMusterschreibenAccess' : ActorMethod<[string], boolean>,
+  'grantMusterschreibenAccess' : ActorMethod<
+    [string, string],
+    { 'ok' : null } |
+      { 'error' : string }
+  >,
+  'revokeMusterschreibenAccess' : ActorMethod<
+    [string, string],
+    { 'ok' : null } |
+      { 'error' : string }
+  >,
+  'verifyBTCTransaction' : ActorMethod<
+    [string, string],
+    { 'confirmed' : null } |
+      { 'pending' : null } |
+      { 'error' : string }
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

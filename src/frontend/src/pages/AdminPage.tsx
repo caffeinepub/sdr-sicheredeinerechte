@@ -1,5 +1,3 @@
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Activity,
   CheckCircle,
@@ -65,15 +63,6 @@ export default function AdminPage() {
   const [paymentMsg, setPaymentMsg] = useState("");
   const [paymentError, setPaymentError] = useState("");
 
-  const [btcAddress, setBtcAddress] = useState("");
-  const [btcAmount, setBtcAmount] = useState("");
-  const [ethAddress, setEthAddress] = useState("");
-  const [ethAmount, setEthAmount] = useState("");
-  const [xmrAddress, setXmrAddress] = useState("");
-  const [xmrAmount, setXmrAmount] = useState("");
-  const [savingAddresses, setSavingAddresses] = useState(false);
-  const [addressMsg, setAddressMsg] = useState("");
-  const [addressError, setAddressError] = useState("");
   const [showPayments, setShowPayments] = useState(false);
   const [copiedTx, setCopiedTx] = useState("");
 
@@ -194,73 +183,6 @@ export default function AdminPage() {
       setPaymentError("Verbindungsfehler.");
     }
   };
-
-  const handleSaveAddresses = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingAddresses(true);
-    setAddressMsg("");
-    setAddressError("");
-    try {
-      await Promise.all([
-        btcAddress && btcAmount
-          ? backend.setCryptoAddress(
-              ADMIN_PASSWORD,
-              "BTC",
-              btcAddress,
-              btcAmount,
-            )
-          : Promise.resolve(null),
-        ethAddress && ethAmount
-          ? backend.setCryptoAddress(
-              ADMIN_PASSWORD,
-              "ETH",
-              ethAddress,
-              ethAmount,
-            )
-          : Promise.resolve(null),
-        xmrAddress && xmrAmount
-          ? backend.setCryptoAddress(
-              ADMIN_PASSWORD,
-              "XMR",
-              xmrAddress,
-              xmrAmount,
-            )
-          : Promise.resolve(null),
-      ]);
-      setAddressMsg("Krypto-Adressen erfolgreich gespeichert.");
-    } catch {
-      setAddressError("Fehler beim Speichern der Adressen.");
-    } finally {
-      setSavingAddresses(false);
-    }
-  };
-
-  const cryptoRows = [
-    {
-      currency: "BTC",
-      icon: "₿",
-      address: btcAddress,
-      setAddress: setBtcAddress,
-      amount: btcAmount,
-      setAmount: setBtcAmount,
-    },
-    {
-      currency: "ETH",
-      icon: "Ξ",
-      address: ethAddress,
-      setAddress: setEthAddress,
-      amount: ethAmount,
-      setAmount: setEthAmount,
-    },
-    {
-      currency: "XMR",
-      icon: "ɱ",
-      address: xmrAddress,
-      setAddress: setXmrAddress,
-      amount: xmrAmount,
-      setAmount: setXmrAmount,
-    },
-  ];
 
   const sortedPaymentRequests = [...paymentRequests].sort(
     (a, b) => Number(b.submittedAt) - Number(a.submittedAt),
@@ -415,139 +337,6 @@ export default function AdminPage() {
                   Aktualisieren
                 </button>
               </div>
-            </div>
-
-            {/* Crypto addresses */}
-            <div
-              className="p-8 rounded-2xl mb-6"
-              style={{
-                background: "oklch(0.17 0.03 248)",
-                border: "1px solid oklch(0.27 0.055 248)",
-              }}
-              data-ocid="admin.crypto_addresses.panel"
-            >
-              <h2
-                className="font-bold text-xl mb-1"
-                style={{ color: "oklch(0.96 0.015 230)" }}
-              >
-                Krypto-Adressen hinterlegen
-              </h2>
-              <p
-                className="text-base mb-6"
-                style={{ color: "oklch(0.73 0.03 235)" }}
-              >
-                Tragen Sie die Empfangsadressen und den geforderten Betrag je
-                Währung ein.
-              </p>
-              <form onSubmit={handleSaveAddresses} className="space-y-5">
-                {cryptoRows.map(
-                  ({
-                    currency,
-                    icon,
-                    address,
-                    setAddress,
-                    amount,
-                    setAmount,
-                  }) => (
-                    <div
-                      key={currency}
-                      className="p-5 rounded-xl space-y-3"
-                      style={{
-                        background: "oklch(0.13 0.025 248)",
-                        border: "1px solid oklch(0.27 0.055 248)",
-                      }}
-                    >
-                      <p
-                        className="font-bold text-base"
-                        style={{ color: "oklch(0.96 0.015 230)" }}
-                      >
-                        {icon} {currency}
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label
-                            className="text-sm"
-                            style={{ color: "oklch(0.73 0.03 235)" }}
-                          >
-                            Empfangsadresse
-                          </Label>
-                          <Input
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            placeholder={`${currency}-Adresse`}
-                            className="text-sm font-mono"
-                            style={{
-                              background: "oklch(0.17 0.03 248)",
-                              border: "1px solid oklch(0.27 0.055 248)",
-                              color: "oklch(0.96 0.015 230)",
-                            }}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label
-                            className="text-sm"
-                            style={{ color: "oklch(0.73 0.03 235)" }}
-                          >
-                            Betrag
-                          </Label>
-                          <Input
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            placeholder="z.B. 0.001"
-                            className="text-sm"
-                            style={{
-                              background: "oklch(0.17 0.03 248)",
-                              border: "1px solid oklch(0.27 0.055 248)",
-                              color: "oklch(0.96 0.015 230)",
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                )}
-                {addressError && (
-                  <p
-                    className="text-base py-2 px-3 rounded-lg"
-                    style={{
-                      color: "oklch(0.65 0.2 27)",
-                      background: "oklch(0.65 0.2 27 / 0.1)",
-                      border: "1px solid oklch(0.65 0.2 27 / 0.2)",
-                    }}
-                    data-ocid="admin.address.error_state"
-                  >
-                    {addressError}
-                  </p>
-                )}
-                {addressMsg && (
-                  <p
-                    className="text-base py-2 px-3 rounded-lg"
-                    style={{
-                      color: "oklch(0.55 0.15 145)",
-                      background: "oklch(0.55 0.15 145 / 0.1)",
-                      border: "1px solid oklch(0.55 0.15 145 / 0.2)",
-                    }}
-                    data-ocid="admin.address.success_state"
-                  >
-                    {addressMsg}
-                  </p>
-                )}
-                <button
-                  type="submit"
-                  disabled={savingAddresses}
-                  className="w-full py-2.5 rounded-xl text-base font-semibold transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
-                  style={{
-                    background: "oklch(0.72 0.13 218)",
-                    color: "oklch(0.135 0.025 248)",
-                  }}
-                  data-ocid="admin.save_addresses.button"
-                >
-                  {savingAddresses ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : null}
-                  {savingAddresses ? "Wird gespeichert…" : "Adressen speichern"}
-                </button>
-              </form>
             </div>
 
             {/* Payment requests */}

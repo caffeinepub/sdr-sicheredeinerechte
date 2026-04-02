@@ -15,6 +15,20 @@ export const UserRole = IDL.Variant({
 });
 export const UserProfile = IDL.Record({ 'name' : IDL.Text });
 
+const CryptoAddress = IDL.Record({
+  'currency' : IDL.Text,
+  'address' : IDL.Text,
+  'amount' : IDL.Text,
+});
+
+const PaymentRequest = IDL.Record({
+  'nickname' : IDL.Text,
+  'currency' : IDL.Text,
+  'txHash' : IDL.Text,
+  'status' : IDL.Text,
+  'submittedAt' : IDL.Int,
+});
+
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -37,6 +51,12 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'incrementVisitorCount' : IDL.Func([], [], []),
+  'recordHeartbeat' : IDL.Func([IDL.Text], [], []),
+  'getActiveVisitorCount' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Nat, 'error' : IDL.Text })],
+      ['query'],
+    ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isRegistered' : IDL.Func([], [IDL.Bool], ['query']),
   'login' : IDL.Func(
@@ -50,6 +70,61 @@ export const idlService = IDL.Service({
       [],
     ),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setCryptoAddress' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
+  'getCryptoAddresses' : IDL.Func(
+      [],
+      [IDL.Vec(CryptoAddress)],
+      ['query'],
+    ),
+  'submitPaymentProof' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
+  'getMyPaymentStatus' : IDL.Func(
+      [IDL.Text],
+      [IDL.Opt(PaymentRequest)],
+      ['query'],
+    ),
+  'getAllPaymentRequests' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Vec(PaymentRequest), 'error' : IDL.Text })],
+      ['query'],
+    ),
+  'approvePayment' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
+  'rejectPayment' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
+  'hasMusterschreibenAccess' : IDL.Func(
+      [IDL.Text],
+      [IDL.Bool],
+      ['query'],
+    ),
+  'grantMusterschreibenAccess' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
+  'revokeMusterschreibenAccess' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
+  'verifyBTCTransaction' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'confirmed' : IDL.Null, 'pending' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
 });
 
 export const idlInitArgs = [];
@@ -61,6 +136,18 @@ export const idlFactory = ({ IDL }) => {
     'guest' : IDL.Null,
   });
   const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const CryptoAddress = IDL.Record({
+    'currency' : IDL.Text,
+    'address' : IDL.Text,
+    'amount' : IDL.Text,
+  });
+  const PaymentRequest = IDL.Record({
+    'nickname' : IDL.Text,
+    'currency' : IDL.Text,
+    'txHash' : IDL.Text,
+    'status' : IDL.Text,
+    'submittedAt' : IDL.Int,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -84,6 +171,12 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'incrementVisitorCount' : IDL.Func([], [], []),
+    'recordHeartbeat' : IDL.Func([IDL.Text], [], []),
+    'getActiveVisitorCount' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Nat, 'error' : IDL.Text })],
+        ['query'],
+      ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isRegistered' : IDL.Func([], [IDL.Bool], ['query']),
     'login' : IDL.Func(
@@ -97,6 +190,61 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setCryptoAddress' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'getCryptoAddresses' : IDL.Func(
+        [],
+        [IDL.Vec(CryptoAddress)],
+        ['query'],
+      ),
+    'submitPaymentProof' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'getMyPaymentStatus' : IDL.Func(
+        [IDL.Text],
+        [IDL.Opt(PaymentRequest)],
+        ['query'],
+      ),
+    'getAllPaymentRequests' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Vec(PaymentRequest), 'error' : IDL.Text })],
+        ['query'],
+      ),
+    'approvePayment' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'rejectPayment' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'hasMusterschreibenAccess' : IDL.Func(
+        [IDL.Text],
+        [IDL.Bool],
+        ['query'],
+      ),
+    'grantMusterschreibenAccess' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'revokeMusterschreibenAccess' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'verifyBTCTransaction' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'confirmed' : IDL.Null, 'pending' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
   });
 };
 

@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSearch } from "@tanstack/react-router";
 import {
   AlertCircle,
   ArrowLeft,
@@ -15,8 +14,9 @@ import { backend } from "../backendActor";
 import { hashPassword, saveSession } from "../utils/auth";
 
 export default function AuthPage() {
-  const search = useSearch({ from: "/auth" }) as { tab?: string };
-  const defaultMode = search.tab === "login" ? "login" : "register";
+  // Read tab param safely without TanStack Router hooks
+  const urlParams = new URLSearchParams(window.location.search);
+  const defaultMode = urlParams.get("tab") === "login" ? "login" : "register";
 
   const [mode, setMode] = useState<"register" | "login">(defaultMode);
   const [loading, setLoading] = useState(false);
@@ -35,7 +35,10 @@ export default function AuthPage() {
   // This avoids any insertBefore conflict because the form is already removed.
   useEffect(() => {
     if (navigating) {
-      window.location.replace("/welcome");
+      const timer = setTimeout(() => {
+        window.location.replace("/welcome");
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [navigating]);
 

@@ -301,16 +301,15 @@ export default function Dashboard() {
                 className="font-bold text-2xl mb-3"
                 style={{ color: "oklch(0.96 0.015 230)" }}
               >
-                Musterschreiben / administrative Prozesse freischalten
+                Musterschreiben freischalten
               </h2>
               <p
                 className="text-base leading-relaxed mb-2"
                 style={{ color: "oklch(0.73 0.03 235)" }}
               >
-                Erhalten Sie Zugang zu professionellen Musterschreiben und
-                administrativen Prozessen für den Umgang mit sogenannten
-                Behörden, Ämtern oder Gerichten. Unsere Vorlagen helfen Ihnen,
-                Ihre Rechte zu wahren.
+                Erhalten Sie Zugang zu professionellen Musterschreiben für den
+                Umgang mit sogenannten Behörden, Ämtern oder Gerichten. Unsere
+                Vorlagen helfen Ihnen, Ihre Rechte zu wahren.
               </p>
               <ul
                 className="text-base mb-5 space-y-2"
@@ -338,17 +337,35 @@ export default function Dashboard() {
               >
                 Bezahlung sicher per Kryptowährung (ICP, BTC, ETH, XRP, SOL).
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = "/zahlung";
-                }}
-                className="px-6 py-3 rounded-xl text-lg font-bold transition-all"
-                style={{ background: "oklch(0.62 0.22 25)", color: "#fff" }}
-                data-ocid="dashboard.buy_musterschreiben.button"
-              >
-                Jetzt Zugang zu professionellen Musterschreiben freischalten →
-              </button>
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = "/zahlung";
+                  }}
+                  className="px-6 py-3 rounded-xl text-lg font-bold transition-all"
+                  style={{
+                    background: "oklch(0.72 0.13 218)",
+                    color: "oklch(0.135 0.025 248)",
+                    boxShadow: "0 0 20px oklch(0.72 0.13 218 / 0.3)",
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background =
+                      "oklch(0.76 0.13 218)";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                      "0 0 28px oklch(0.72 0.13 218 / 0.45)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background =
+                      "oklch(0.72 0.13 218)";
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow =
+                      "0 0 20px oklch(0.72 0.13 218 / 0.3)";
+                  }}
+                  data-ocid="dashboard.buy_musterschreiben.button"
+                >
+                  Jetzt Zugang zu professionellen Musterschreiben freischalten →
+                </button>
+              </div>
             </div>
           )}
         </motion.div>
@@ -366,11 +383,10 @@ export default function Dashboard() {
           data-ocid="dashboard.quote.panel"
         >
           <blockquote
-            className="font-bold text-2xl sm:text-3xl lg:text-4xl leading-relaxed mb-4"
+            className="font-bold text-2xl sm:text-3xl lg:text-4xl leading-relaxed mb-4 italic"
             style={{ color: "oklch(0.72 0.13 218)" }}
           >
-            „Fast alle Rechte beruhen auf Rechtsbrüchen, besonders in der
-            Politik."
+            „Handle stets so, daß die Anzahl deiner Möglichkeiten größer wird."
           </blockquote>
           <p className="text-base" style={{ color: "oklch(0.73 0.03 235)" }}>
             – Heinz von Foerster

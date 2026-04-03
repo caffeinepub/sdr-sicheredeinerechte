@@ -344,7 +344,7 @@ export default function LandingPage() {
               </p>
             </motion.div>
 
-            {/* Hero button — Jetzt registrieren, centered */}
+            {/* Hero button — Jetzt registrieren, centered, DISABLED */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -353,27 +353,13 @@ export default function LandingPage() {
             >
               <button
                 type="button"
-                onClick={() =>
-                  navigate({ to: "/auth", search: { tab: "register" } })
-                }
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold transition-all"
+                disabled
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold cursor-not-allowed"
                 style={{
-                  background: "oklch(0.72 0.13 218)",
-                  color: "oklch(0.135 0.025 248)",
-                  boxShadow:
-                    "0 0 24px oklch(0.72 0.13 218 / 0.35), 0 4px 12px oklch(0.135 0.025 248 / 0.4)",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "oklch(0.76 0.13 218)";
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                    "0 0 32px oklch(0.72 0.13 218 / 0.5), 0 4px 16px oklch(0.135 0.025 248 / 0.4)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "oklch(0.72 0.13 218)";
-                  (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                    "0 0 24px oklch(0.72 0.13 218 / 0.35), 0 4px 12px oklch(0.135 0.025 248 / 0.4)";
+                  background: "oklch(0.30 0.03 248)",
+                  color: "oklch(0.50 0.02 235)",
+                  boxShadow: "none",
+                  border: "1px solid oklch(0.27 0.055 248)",
                 }}
                 data-ocid="hero.register.primary_button"
               >

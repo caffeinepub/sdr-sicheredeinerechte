@@ -1,5 +1,6 @@
 import {
   Activity,
+  BookOpen,
   CheckCircle,
   ChevronDown,
   ChevronUp,
@@ -57,6 +58,10 @@ export default function AdminPage() {
   const [visitorLoading, setVisitorLoading] = useState(false);
   const [activeCount, setActiveCount] = useState<bigint | null>(null);
   const [activeLoading, setActiveLoading] = useState(false);
+  const [musterschreibenCount, setMusterschreibenCount] = useState<
+    bigint | null
+  >(null);
+  const [musterschreibenLoading, setMusterschreibenLoading] = useState(false);
 
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(false);
@@ -77,6 +82,20 @@ export default function AdminPage() {
       // silently fail
     } finally {
       setActiveLoading(false);
+    }
+  };
+
+  const loadMusterschreibenCount = async () => {
+    setMusterschreibenLoading(true);
+    try {
+      const result = await backend.getMusterschreibenCount(ADMIN_PASSWORD);
+      if (result.__kind__ === "ok") {
+        setMusterschreibenCount(result.ok);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setMusterschreibenLoading(false);
     }
   };
 
@@ -112,6 +131,10 @@ export default function AdminPage() {
       // Load active visitor count and refresh every 30s
       loadActiveCount();
       const interval = setInterval(loadActiveCount, 30000);
+
+      // Load musterschreiben count
+      loadMusterschreibenCount();
+
       return () => clearInterval(interval);
     }
     window.location.href = "/";
@@ -139,6 +162,7 @@ export default function AdminPage() {
       if (result.__kind__ === "ok") {
         setPaymentMsg(`Ausgleich für "${nickname}" genehmigt.`);
         loadPaymentRequests();
+        loadMusterschreibenCount();
       } else {
         setPaymentError(result.error);
       }
@@ -176,6 +200,7 @@ export default function AdminPage() {
           `Musterschreiben-Zugang für "${nickname}" freigeschaltet.`,
         );
         loadPaymentRequests();
+        loadMusterschreibenCount();
       } else {
         setPaymentError(result.error);
       }
@@ -234,8 +259,8 @@ export default function AdminPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Visitor counts - 2-column grid */}
-            <div className="mb-8 grid grid-cols-2 gap-4">
+            {/* Visitor counts + Musterschreiben count - 3-column grid */}
+            <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Total visitors */}
               <div
                 className="p-6 rounded-2xl text-center"
@@ -333,6 +358,65 @@ export default function AdminPage() {
                     border: "1px solid oklch(0.55 0.15 145 / 0.35)",
                   }}
                   data-ocid="admin.active_visitors.button"
+                >
+                  Aktualisieren
+                </button>
+              </div>
+
+              {/* Freigeschaltete Musterschreiben */}
+              <div
+                className="p-6 rounded-2xl text-center"
+                style={{
+                  background: "oklch(0.75 0.16 55 / 0.08)",
+                  border: "1px solid oklch(0.75 0.16 55 / 0.25)",
+                }}
+                data-ocid="admin.musterschreiben_count.card"
+              >
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+                  style={{ background: "oklch(0.75 0.16 55 / 0.15)" }}
+                >
+                  <BookOpen
+                    className="w-6 h-6"
+                    style={{ color: "oklch(0.75 0.16 55)" }}
+                  />
+                </div>
+                <p
+                  className="text-sm font-medium uppercase tracking-wider mb-1"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Freigeschaltete Musterschreiben
+                </p>
+                {musterschreibenLoading ? (
+                  <div
+                    className="flex justify-center"
+                    data-ocid="admin.musterschreiben_count.loading_state"
+                  >
+                    <Loader2
+                      className="w-8 h-8 animate-spin"
+                      style={{ color: "oklch(0.75 0.16 55)" }}
+                    />
+                  </div>
+                ) : (
+                  <p
+                    className="font-bold text-4xl"
+                    style={{ color: "oklch(0.75 0.16 55)" }}
+                    data-ocid="admin.musterschreiben_count.success_state"
+                  >
+                    {musterschreibenCount !== null
+                      ? musterschreibenCount.toString()
+                      : "–"}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={loadMusterschreibenCount}
+                  className="mt-3 text-xs px-3 py-1 rounded-lg transition-all"
+                  style={{
+                    color: "oklch(0.75 0.16 55)",
+                    border: "1px solid oklch(0.75 0.16 55 / 0.35)",
+                  }}
+                  data-ocid="admin.musterschreiben_count.button"
                 >
                   Aktualisieren
                 </button>

@@ -77,6 +77,15 @@ actor {
     #ok(count);
   };
 
+  public query func getMusterschreibenCount(adminPasswordAttempt : Text) : async { #ok : Nat; #error : Text } {
+    if (adminPasswordAttempt != adminPassword) return #error("Unauthorized");
+    var count : Nat = 0;
+    for (hasAccess in musterschreibenAccess.values()) {
+      if (hasAccess) { count += 1 };
+    };
+    #ok(count);
+  };
+
   public query ({ caller }) func getCurrentUser(sessionToken : Text) : async { #ok : Text; #error : Text } {
     switch (sessions.get(sessionToken)) {
       case (null) { #error("Invalid session token") };

@@ -17,6 +17,7 @@ export interface backendInterface {
     incrementVisitorCount(): Promise<void>;
     recordHeartbeat(sessionToken: string): Promise<void>;
     getActiveVisitorCount(adminPasswordAttempt: string): Promise<{ __kind__: "ok"; ok: bigint; } | { __kind__: "error"; error: string; }>;
+    getMusterschreibenCount(adminPasswordAttempt: string): Promise<{ __kind__: "ok"; ok: bigint; } | { __kind__: "error"; error: string; }>;
     isCallerAdmin(): Promise<boolean>;
     isRegistered(): Promise<boolean>;
     login(nickname: string, passwordHash: string): Promise<{ __kind__: "ok"; ok: string; } | { __kind__: "error"; error: string; }>;

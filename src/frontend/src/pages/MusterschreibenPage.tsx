@@ -108,9 +108,9 @@ function OdtViewerModal({ entry, onClose }: OdtViewerModalProps) {
         {/* Info area */}
         <div className="px-6 py-6 flex flex-col gap-4">
           <p className="text-base" style={{ color: "oklch(0.82 0.04 230)" }}>
-            ODT-Dateien können nicht direkt im Browser angezeigt werden. Laden
-            Sie die Datei herunter und öffnen Sie sie mit LibreOffice,
-            OpenOffice oder Microsoft Word.
+            ODT-Dateien k\u00f6nnen nicht direkt im Browser angezeigt werden.
+            Laden Sie die Datei herunter und \u00f6ffnen Sie sie mit
+            LibreOffice, OpenOffice oder Microsoft Word.
           </p>
           <button
             type="button"
@@ -137,7 +137,7 @@ function OdtViewerModal({ entry, onClose }: OdtViewerModalProps) {
           }}
         >
           <p className="text-xs" style={{ color: "oklch(0.55 0.02 235)" }}>
-            Hinweis: Änderungen in der heruntergeladenen Datei werden nicht
+            Hinweis: \u00c4nderungen in der heruntergeladenen Datei werden nicht
             dauerhaft gespeichert.
           </p>
         </div>
@@ -527,12 +527,12 @@ export default function MusterschreibenPage() {
                 border: "1px solid oklch(0.55 0.15 145 / 0.3)",
               }}
             >
-              \u2713 Freigegeben
+              Freigegeben
             </span>
           </div>
           <h1
             className="font-bold text-3xl sm:text-4xl mb-3"
-            style={{ color: "oklch(0.96 0.015 230)" }}
+            style={{ color: "oklch(0.72 0.13 218)" }}
           >
             Musterschreiben
           </h1>
@@ -540,8 +540,7 @@ export default function MusterschreibenPage() {
             className="text-lg leading-relaxed mb-10"
             style={{ color: "oklch(0.73 0.03 235)" }}
           >
-            Hier finden Sie Ihre freigeschalteten Musterschreiben. Sie
-            k\u00f6nnen die ODT-Dateien herunterladen und mit LibreOffice,
+            Sie k\u00f6nnen die ODT-Dateien herunterladen und mit LibreOffice,
             OpenOffice oder Microsoft Word bearbeiten.
           </p>
 
@@ -557,13 +556,6 @@ export default function MusterschreibenPage() {
               />
             ))}
           </div>
-
-          <p
-            className="mt-10 text-base text-center"
-            style={{ color: "oklch(0.55 0.02 235)" }}
-          >
-            Weitere Musterschreiben werden laufend hinzugef\u00fcgt.
-          </p>
         </motion.div>
       </main>
 

@@ -9,12 +9,10 @@ import Int "mo:core/Int";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import HttpOutcalls "http-outcalls/outcall";
-import BlobStorageMixin "blob-storage/Mixin";
 
 actor {
   stable let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
-  include BlobStorageMixin();
 
   public type UserProfile = { name : Text };
   type User = { nickname : Text; passwordHash : Text };
@@ -217,11 +215,11 @@ actor {
     #ok;
   };
 
-  // PDF management - stores base64 data directly in backend (no external storage canister)
+  // ODT management - stores base64 data directly in backend (no external storage canister)
   public shared ({ caller }) func addPdfEntry(adminPw : Text, blockId : Text, filename : Text, base64Data : Text) : async { #ok : Text; #error : Text } {
     if (adminPw != adminPassword) return #error("Unauthorized");
     pdfEntryCounter += 1;
-    let entryId = "pdf-" # pdfEntryCounter.toText();
+    let entryId = "odt-" # pdfEntryCounter.toText();
     pdfEntriesNew.add(entryId, { id = entryId; blockId; filename; base64Data; uploadedAt = Time.now() });
     #ok(entryId);
   };

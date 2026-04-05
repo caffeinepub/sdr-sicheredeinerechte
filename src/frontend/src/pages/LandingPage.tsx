@@ -276,6 +276,33 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
+            {/* Construction notice banner */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.08 }}
+              className="mb-8 px-6 py-5 rounded-2xl flex items-start gap-4"
+              style={{
+                background: "oklch(0.18 0.03 30 / 0.5)",
+                border: "2px solid oklch(0.65 0.2 27 / 0.7)",
+              }}
+              data-ocid="landing.construction_banner"
+            >
+              <span style={{ fontSize: "2rem", lineHeight: 1 }}>🚧</span>
+              <p
+                className="font-bold leading-relaxed"
+                style={{
+                  fontSize: "1.35rem",
+                  color: "oklch(0.75 0.2 27)",
+                }}
+              >
+                Unsere Homepage befindet sich derzeit noch im Aufbau und ist
+                daher nur eingeschränkt nutzbar – wir bitten um Geduld. Nach der
+                Fertigstellung stehen Ihnen alle Funktionen vollständig zur
+                Verfügung.
+              </p>
+            </motion.div>
+
             {/* Text block — left-aligned with 3cm left indent */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}

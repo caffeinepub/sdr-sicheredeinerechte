@@ -371,19 +371,20 @@ export default function Dashboard() {
                   </li>
                 </ul>
                 <p>
-                  Wenn Sie mit unseren Musterschreiben und Erklärungen
-                  begeistert sind, würden wir uns über Ihre Weiterempfehlung
-                  sehr freuen. Damit unterstützen Sie uns dabei, dieses Angebot
-                  langfristig aufrechtzuerhalten, kontinuierlich neue
-                  hochwertige Vorlagen zu entwickeln und einen Beitrag zu mehr
-                  Klarheit und Fairness im Recht zu leisten.
+                  Wenn Sie <strong>von</strong> unseren Musterschreiben und
+                  Erklärungen begeistert sind, würden wir uns über Ihre
+                  Weiterempfehlung sehr freuen. Damit unterstützen Sie uns
+                  dabei, dieses Angebot langfristig aufrechtzuerhalten,
+                  kontinuierlich neue hochwertige Vorlagen zu entwickeln und
+                  einen Beitrag zu mehr Klarheit und Fairness im Recht zu
+                  leisten.
                 </p>
               </div>
               <p
                 className="text-sm mb-5"
                 style={{ color: "oklch(0.55 0.02 235)" }}
               >
-                Bezahlung sicher per Kryptowährung (ICP, BTC, ETH, XRP, SOL).
+                Ausgleich sicher per Kryptowährung (ICP, BTC, ETH, XRP, SOL).
               </p>
               <div className="flex justify-center">
                 <button

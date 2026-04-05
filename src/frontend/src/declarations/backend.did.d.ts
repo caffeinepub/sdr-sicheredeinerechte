@@ -16,7 +16,7 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export interface CryptoAddress { 'currency' : string; 'address' : string; 'amount' : string; }
 export interface PaymentRequestRecord { 'nickname' : string; 'currency' : string; 'txHash' : string; 'status' : string; 'submittedAt' : bigint; }
-export interface PdfEntryRecord { 'id' : string; 'blockId' : string; 'filename' : string; 'hash' : string; 'uploadedAt' : bigint; }
+export interface PdfEntryRecord { 'id' : string; 'blockId' : string; 'filename' : string; 'base64Data' : string; 'uploadedAt' : bigint; }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,

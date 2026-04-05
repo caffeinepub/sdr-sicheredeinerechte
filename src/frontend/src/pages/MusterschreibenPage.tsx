@@ -1,4 +1,3 @@
-import { HttpAgent } from "@icp-sdk/core/agent";
 import {
   ChevronDown,
   ChevronUp,
@@ -14,12 +13,10 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { PdfEntry } from "../backend.d";
 import { backend } from "../backendActor";
-import { loadConfig } from "../config";
-import { StorageClient } from "../utils/StorageClient";
 import { clearSession, getSession } from "../utils/auth";
 
 const PDF_BLOCKS = [
-  { id: "zurueckweisung", title: "Zurückweisung" },
+  { id: "zurueckweisung", title: "Zur\u00fcckweisung" },
   { id: "bedingte_annahme", title: "Bedingte Annahme" },
   { id: "annahme_unter_vorbehalt", title: "Annahme unter Vorbehalt" },
   {
@@ -28,67 +25,35 @@ const PDF_BLOCKS = [
   },
 ];
 
-async function getPdfUrl(hash: string): Promise<string> {
-  const config = await loadConfig();
-  const agent = new HttpAgent({ host: config.backend_host });
-  if (config.backend_host?.includes("localhost")) {
-    await agent.fetchRootKey().catch(() => {});
+const ODT_MIME = "application/vnd.oasis.opendocument.text";
+
+// Convert base64 string to a blob URL for ODT download
+function base64ToBlobUrl(base64Data: string): string {
+  const byteChars = atob(base64Data);
+  const byteNumbers = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteNumbers[i] = byteChars.charCodeAt(i);
   }
-  const storageClient = new StorageClient(
-    config.bucket_name,
-    config.storage_gateway_url,
-    config.backend_canister_id,
-    config.project_id,
-    agent,
-  );
-  return storageClient.getDirectURL(hash);
+  const blob = new Blob([byteNumbers], { type: ODT_MIME });
+  return URL.createObjectURL(blob);
 }
 
-async function getPdfBlobUrl(hash: string): Promise<string> {
-  const directUrl = await getPdfUrl(hash);
-  const response = await fetch(directUrl);
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-  const blob = await response.blob();
-  // Force PDF MIME type so browsers open in PDF viewer
-  const pdfBlob = new Blob([blob], { type: "application/pdf" });
-  return URL.createObjectURL(pdfBlob);
-}
-
-interface PdfViewerModalProps {
+interface OdtViewerModalProps {
   entry: PdfEntry | null;
   onClose: () => void;
 }
 
-function PdfViewerModal({ entry, onClose }: PdfViewerModalProps) {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let objectUrl: string | null = null;
-    if (!entry) {
-      setPdfUrl(null);
-      return;
-    }
-    setLoading(true);
-    setError("");
-    getPdfBlobUrl(entry.hash)
-      .then((url) => {
-        objectUrl = url;
-        setPdfUrl(url);
-      })
-      .catch(() => {
-        setError("PDF konnte nicht geladen werden.");
-      })
-      .finally(() => setLoading(false));
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [entry]);
-
+function OdtViewerModal({ entry, onClose }: OdtViewerModalProps) {
   if (!entry) return null;
+
+  const handleDownload = () => {
+    const url = base64ToBlobUrl(entry.base64Data);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = entry.filename;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  };
 
   return (
     <div
@@ -100,14 +65,13 @@ function PdfViewerModal({ entry, onClose }: PdfViewerModalProps) {
       onKeyDown={(e) => {
         if (e.key === "Escape") onClose();
       }}
-      data-ocid="musterschreiben.pdf_viewer.modal"
+      data-ocid="musterschreiben.odt_viewer.modal"
     >
       <div
-        className="w-full max-w-4xl max-h-screen flex flex-col rounded-2xl overflow-hidden"
+        className="w-full max-w-lg flex flex-col rounded-2xl overflow-hidden"
         style={{
           background: "oklch(0.135 0.025 248)",
           border: "1px solid oklch(0.27 0.055 248)",
-          maxHeight: "90vh",
         }}
       >
         {/* Modal header */}
@@ -135,49 +99,36 @@ function PdfViewerModal({ entry, onClose }: PdfViewerModalProps) {
               color: "oklch(0.73 0.03 235)",
               border: "1px solid oklch(0.27 0.055 248)",
             }}
-            data-ocid="musterschreiben.pdf_viewer.close_button"
+            data-ocid="musterschreiben.odt_viewer.close_button"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* PDF iframe */}
-        <div className="flex-1 overflow-hidden" style={{ minHeight: "400px" }}>
-          {loading ? (
-            <div
-              className="flex items-center justify-center h-full"
-              data-ocid="musterschreiben.pdf_viewer.loading_state"
-            >
-              <Loader2
-                className="w-8 h-8 animate-spin"
-                style={{ color: "oklch(0.72 0.13 218)" }}
-              />
-            </div>
-          ) : error ? (
-            <div
-              className="flex items-center justify-center h-full p-6"
-              data-ocid="musterschreiben.pdf_viewer.error_state"
-            >
-              <p style={{ color: "oklch(0.65 0.2 27)" }}>{error}</p>
-            </div>
-          ) : pdfUrl ? (
-            <object
-              data={pdfUrl}
-              type="application/pdf"
-              className="w-full h-full"
-              style={{ minHeight: "500px", border: "none" }}
-            >
-              <iframe
-                src={pdfUrl}
-                title={entry.filename}
-                className="w-full h-full"
-                style={{ minHeight: "500px", border: "none" }}
-              />
-            </object>
-          ) : null}
+        {/* Info area */}
+        <div className="px-6 py-6 flex flex-col gap-4">
+          <p className="text-base" style={{ color: "oklch(0.82 0.04 230)" }}>
+            ODT-Dateien können nicht direkt im Browser angezeigt werden. Laden
+            Sie die Datei herunter und öffnen Sie sie mit LibreOffice,
+            OpenOffice oder Microsoft Word.
+          </p>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-base font-semibold transition-all"
+            style={{
+              background: "oklch(0.55 0.15 145 / 0.15)",
+              color: "oklch(0.55 0.15 145)",
+              border: "1px solid oklch(0.55 0.15 145 / 0.3)",
+            }}
+            data-ocid="musterschreiben.odt_viewer.download_button"
+          >
+            <Download className="w-5 h-5" />
+            Herunterladen
+          </button>
         </div>
 
-        {/* Notice: changes not saved */}
+        {/* Notice */}
         <div
           className="px-6 py-3 flex-shrink-0 text-center"
           style={{
@@ -186,8 +137,8 @@ function PdfViewerModal({ entry, onClose }: PdfViewerModalProps) {
           }}
         >
           <p className="text-xs" style={{ color: "oklch(0.55 0.02 235)" }}>
-            Hinweis: Änderungen werden nicht gespeichert. Nach dem Abmelden oder
-            Neuladen erscheint das Dokument wieder im Ursprungszustand.
+            Hinweis: Änderungen in der heruntergeladenen Datei werden nicht
+            dauerhaft gespeichert.
           </p>
         </div>
       </div>
@@ -308,7 +259,7 @@ function PdfBlockSection({
               ) : (
                 <div className="flex flex-col gap-3">
                   {blockEntries.map((entry, idx) => (
-                    <PdfEntryRow
+                    <OdtEntryRow
                       key={entry.id}
                       entry={entry}
                       rowIndex={idx}
@@ -326,34 +277,30 @@ function PdfBlockSection({
   );
 }
 
-interface PdfEntryRowProps {
+interface OdtEntryRowProps {
   entry: PdfEntry;
   rowIndex: number;
   blockIndex: number;
   onView: (entry: PdfEntry) => void;
 }
 
-function PdfEntryRow({
+function OdtEntryRow({
   entry,
   rowIndex,
   blockIndex,
   onView,
-}: PdfEntryRowProps) {
+}: OdtEntryRowProps) {
   const [downloading, setDownloading] = useState(false);
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     setDownloading(true);
     try {
-      const url = await getPdfUrl(entry.hash);
-      // Fetch the blob to trigger a real download with filename
-      const resp = await fetch(url);
-      const blob = await resp.blob();
-      const objectUrl = URL.createObjectURL(blob);
+      const url = base64ToBlobUrl(entry.base64Data);
       const anchor = document.createElement("a");
-      anchor.href = objectUrl;
+      anchor.href = url;
       anchor.download = entry.filename;
       anchor.click();
-      URL.revokeObjectURL(objectUrl);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
     } catch {
       // silently fail
     } finally {
@@ -434,12 +381,8 @@ function PdfEntryRow({
 export default function MusterschreibenPage() {
   const [nickname, setNickname] = useState("");
   const [checking, setChecking] = useState(true);
-
-  // Per-block PDF entries (we load all and filter client-side)
   const [allEntries, setAllEntries] = useState<PdfEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
-
-  // PDF viewer
   const [viewingEntry, setViewingEntry] = useState<PdfEntry | null>(null);
 
   useEffect(() => {
@@ -454,7 +397,6 @@ export default function MusterschreibenPage() {
         window.location.href = "/zahlung";
       } else {
         setChecking(false);
-        // Load PDFs for all blocks in parallel
         setLoadingEntries(true);
         Promise.all(
           PDF_BLOCKS.map((block) =>
@@ -489,7 +431,7 @@ export default function MusterschreibenPage() {
             style={{ borderColor: "oklch(0.72 0.13 218)" }}
           />
           <p className="text-lg" style={{ color: "oklch(0.73 0.03 235)" }}>
-            Zugang wird geprüft…
+            Zugang wird gepr\u00fcft\u2026
           </p>
         </div>
       </div>
@@ -501,9 +443,9 @@ export default function MusterschreibenPage() {
       className="min-h-screen"
       style={{ background: "oklch(0.135 0.025 248)" }}
     >
-      {/* PDF Viewer Overlay – no React portal, simple fixed overlay */}
+      {/* ODT Viewer Overlay */}
       {viewingEntry && (
-        <PdfViewerModal
+        <OdtViewerModal
           entry={viewingEntry}
           onClose={() => setViewingEntry(null)}
         />
@@ -585,7 +527,7 @@ export default function MusterschreibenPage() {
                 border: "1px solid oklch(0.55 0.15 145 / 0.3)",
               }}
             >
-              ✓ Freigegeben
+              \u2713 Freigegeben
             </span>
           </div>
           <h1
@@ -598,9 +540,9 @@ export default function MusterschreibenPage() {
             className="text-lg leading-relaxed mb-10"
             style={{ color: "oklch(0.73 0.03 235)" }}
           >
-            Hier finden Sie Ihre freigeschalteten Musterschreiben. Sie können
-            die PDFs einsehen, bearbeiten und herunterladen. Änderungen werden
-            nicht dauerhaft gespeichert.
+            Hier finden Sie Ihre freigeschalteten Musterschreiben. Sie
+            k\u00f6nnen die ODT-Dateien herunterladen und mit LibreOffice,
+            OpenOffice oder Microsoft Word bearbeiten.
           </p>
 
           <div className="flex flex-col gap-6">
@@ -620,7 +562,7 @@ export default function MusterschreibenPage() {
             className="mt-10 text-base text-center"
             style={{ color: "oklch(0.55 0.02 235)" }}
           >
-            Weitere Musterschreiben werden laufend hinzugefügt.
+            Weitere Musterschreiben werden laufend hinzugef\u00fcgt.
           </p>
         </motion.div>
       </main>
@@ -631,8 +573,8 @@ export default function MusterschreibenPage() {
       >
         <div className="max-w-5xl mx-auto text-center">
           <p className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
-            © {new Date().getFullYear()} SichereDeineRechte. Built with love
-            using{" "}
+            \u00a9 {new Date().getFullYear()} SichereDeineRechte. Built with
+            love using{" "}
             <a
               href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
               target="_blank"

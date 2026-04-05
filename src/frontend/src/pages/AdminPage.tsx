@@ -1,4 +1,3 @@
-import { HttpAgent } from "@icp-sdk/core/agent";
 import {
   Activity,
   BookOpen,
@@ -19,8 +18,6 @@ import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import type { PaymentRequest, PdfEntry } from "../backend.d";
 import { backend } from "../backendActor";
-import { loadConfig } from "../config";
-import { StorageClient } from "../utils/StorageClient";
 
 const ADMIN_PASSWORD = "WotanClan44!";
 
@@ -34,23 +31,20 @@ const PDF_BLOCKS = [
   },
 ];
 
-async function uploadPdf(
-  file: File,
-  onProgress?: (pct: number) => void,
-): Promise<string> {
-  const config = await loadConfig();
-  const agent = new HttpAgent({ host: config.backend_host });
-  await agent.fetchRootKey().catch(() => {});
-  const storageClient = new StorageClient(
-    config.bucket_name,
-    config.storage_gateway_url,
-    config.backend_canister_id,
-    config.project_id,
-    agent,
-  );
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const { hash } = await storageClient.putFile(bytes, onProgress);
-  return hash;
+// Convert a File to a base64 string (no data URL prefix)
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // Strip the data URL prefix (e.g. "data:application/vnd.oasis.opendocument.text;base64,")
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = () =>
+      reject(new Error("Datei konnte nicht gelesen werden."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -158,13 +152,13 @@ function PdfBlockCard({
           className="text-sm font-medium"
           style={{ color: "oklch(0.73 0.03 235)" }}
         >
-          PDF hochladen (nur .pdf)
+          ODT-Datei hochladen (nur .odt)
         </label>
         <input
           ref={fileInputRef}
           id={`pdf-upload-${blockId}`}
           type="file"
-          accept=".pdf,application/pdf"
+          accept=".odt,application/vnd.oasis.opendocument.text"
           onChange={handleFileChange}
           className="block w-full text-sm rounded-lg px-3 py-2 cursor-pointer"
           style={{
@@ -205,7 +199,7 @@ function PdfBlockCard({
           ) : (
             <Upload className="w-4 h-4" />
           )}
-          {uploading ? `Hochladen… ${uploadProgress}%` : "PDF hochladen"}
+          {uploading ? `Hochladen… ${uploadProgress}%` : "ODT hochladen"}
         </button>
         {uploading && (
           <div
@@ -249,13 +243,13 @@ function PdfBlockCard({
         )}
       </div>
 
-      {/* PDF list */}
+      {/* ODT list */}
       <div className="flex flex-col gap-2">
         <p
           className="text-xs font-medium uppercase tracking-wider"
           style={{ color: "oklch(0.55 0.02 235)" }}
         >
-          Hochgeladene PDFs ({blockEntries.length})
+          Hochgeladene ODT-Dateien ({blockEntries.length})
         </p>
         {blockEntries.length === 0 ? (
           <p
@@ -263,7 +257,7 @@ function PdfBlockCard({
             style={{ color: "oklch(0.55 0.02 235)" }}
             data-ocid={`admin.pdf_block.${blockId}.empty_state`}
           >
-            Keine PDFs hochgeladen.
+            Keine ODT-Dateien hochgeladen.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -337,11 +331,10 @@ export default function AdminPage() {
   const [showPayments, setShowPayments] = useState(false);
   const [copiedTx, setCopiedTx] = useState("");
 
-  // PDF management state
+  // ODT management state
   const [showPdfManagement, setShowPdfManagement] = useState(false);
   const [pdfEntries, setPdfEntries] = useState<PdfEntry[]>([]);
   const [loadingPdfs, setLoadingPdfs] = useState(false);
-  // Per-block upload state: blockId -> { uploading, progress, error, success }
   const [blockUploadState, setBlockUploadState] = useState<
     Record<
       string,
@@ -420,7 +413,7 @@ export default function AdminPage() {
     if (storedPw === ADMIN_PASSWORD) {
       sessionStorage.removeItem("adminPw");
       setIsAuthenticated(true);
-      // Load data in background, silently
+
       setVisitorLoading(true);
       backend
         .getVisitorCount(ADMIN_PASSWORD)
@@ -443,11 +436,8 @@ export default function AdminPage() {
         .catch(() => {})
         .finally(() => setLoadingPayments(false));
 
-      // Load active visitor count and refresh every 30s
       loadActiveCount();
       const interval = setInterval(loadActiveCount, 30000);
-
-      // Load musterschreiben count
       loadMusterschreibenCount();
 
       return () => clearInterval(interval);
@@ -524,23 +514,26 @@ export default function AdminPage() {
     }
   };
 
+  // Upload ODT: convert to base64 and store directly in the backend
   const handlePdfUpload = async (blockId: string, file: File) => {
     setBlockState(blockId, {
       uploading: true,
-      progress: 0,
+      progress: 10,
       error: "",
       success: "",
     });
     try {
-      const hash = await uploadPdf(file, (pct) => {
-        setBlockState(blockId, { progress: pct });
-      });
+      setBlockState(blockId, { progress: 40 });
+      const base64Data = await fileToBase64(file);
+      setBlockState(blockId, { progress: 70 });
+
       const result = await backend.addPdfEntry(
         ADMIN_PASSWORD,
         blockId,
         file.name,
-        hash,
+        base64Data,
       );
+
       if (result.__kind__ === "ok") {
         setBlockState(blockId, {
           uploading: false,
@@ -561,7 +554,9 @@ export default function AdminPage() {
     } catch (err) {
       setBlockState(blockId, {
         uploading: false,
-        error: `Upload fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`,
+        error: `Upload fehlgeschlagen: ${
+          err instanceof Error ? err.message : "Unbekannter Fehler"
+        }`,
       });
     }
   };
@@ -598,7 +593,7 @@ export default function AdminPage() {
       className="min-h-screen px-6 py-12"
       style={{ background: "oklch(0.135 0.025 248)" }}
     >
-      {/* Header + stats cards – constrained width */}
+      {/* Header + stats cards */}
       <div className="w-full max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -657,7 +652,6 @@ export default function AdminPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Visitor counts + Musterschreiben count - 3-column grid */}
             <div className="mb-8 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Total visitors */}
               <div
@@ -684,10 +678,7 @@ export default function AdminPage() {
                   Gesamte Besucher
                 </p>
                 {visitorLoading ? (
-                  <div
-                    className="flex justify-center"
-                    data-ocid="admin.visitor_count.loading_state"
-                  >
+                  <div className="flex justify-center">
                     <Loader2
                       className="w-8 h-8 animate-spin"
                       style={{ color: "oklch(0.72 0.13 218)" }}
@@ -697,7 +688,6 @@ export default function AdminPage() {
                   <p
                     className="font-bold text-4xl"
                     style={{ color: "oklch(0.72 0.13 218)" }}
-                    data-ocid="admin.visitor_count.success_state"
                   >
                     {visitorCount !== null ? visitorCount.toString() : "–"}
                   </p>
@@ -729,10 +719,7 @@ export default function AdminPage() {
                   Gerade aktiv (letzte 5 Min.)
                 </p>
                 {activeLoading ? (
-                  <div
-                    className="flex justify-center"
-                    data-ocid="admin.active_visitors.loading_state"
-                  >
+                  <div className="flex justify-center">
                     <Loader2
                       className="w-8 h-8 animate-spin"
                       style={{ color: "oklch(0.55 0.15 145)" }}
@@ -742,7 +729,6 @@ export default function AdminPage() {
                   <p
                     className="font-bold text-4xl"
                     style={{ color: "oklch(0.55 0.15 145)" }}
-                    data-ocid="admin.active_visitors.success_state"
                   >
                     {activeCount !== null ? activeCount.toString() : "–"}
                   </p>
@@ -755,7 +741,6 @@ export default function AdminPage() {
                     color: "oklch(0.55 0.15 145)",
                     border: "1px solid oklch(0.55 0.15 145 / 0.35)",
                   }}
-                  data-ocid="admin.active_visitors.button"
                 >
                   Aktualisieren
                 </button>
@@ -786,10 +771,7 @@ export default function AdminPage() {
                   Freigeschaltete Musterschreiben
                 </p>
                 {musterschreibenLoading ? (
-                  <div
-                    className="flex justify-center"
-                    data-ocid="admin.musterschreiben_count.loading_state"
-                  >
+                  <div className="flex justify-center">
                     <Loader2
                       className="w-8 h-8 animate-spin"
                       style={{ color: "oklch(0.75 0.16 55)" }}
@@ -799,7 +781,6 @@ export default function AdminPage() {
                   <p
                     className="font-bold text-4xl"
                     style={{ color: "oklch(0.75 0.16 55)" }}
-                    data-ocid="admin.musterschreiben_count.success_state"
                   >
                     {musterschreibenCount !== null
                       ? musterschreibenCount.toString()
@@ -814,7 +795,6 @@ export default function AdminPage() {
                     color: "oklch(0.75 0.16 55)",
                     border: "1px solid oklch(0.75 0.16 55 / 0.35)",
                   }}
-                  data-ocid="admin.musterschreiben_count.button"
                 >
                   Aktualisieren
                 </button>
@@ -882,7 +862,6 @@ export default function AdminPage() {
                     color: "oklch(0.72 0.13 218)",
                     border: "1px solid oklch(0.72 0.13 218 / 0.35)",
                   }}
-                  data-ocid="admin.refresh_payments.button"
                 >
                   Aktualisieren
                 </button>
@@ -896,7 +875,6 @@ export default function AdminPage() {
                     background: "oklch(0.55 0.15 145 / 0.1)",
                     border: "1px solid oklch(0.55 0.15 145 / 0.2)",
                   }}
-                  data-ocid="admin.payment_action.success_state"
                 >
                   {paymentMsg}
                 </p>
@@ -909,27 +887,20 @@ export default function AdminPage() {
                     background: "oklch(0.65 0.2 27 / 0.1)",
                     border: "1px solid oklch(0.65 0.2 27 / 0.2)",
                   }}
-                  data-ocid="admin.payment_action.error_state"
                 >
                   {paymentError}
                 </p>
               )}
 
               {loadingPayments ? (
-                <div
-                  className="flex items-center justify-center py-8"
-                  data-ocid="admin.payments.loading_state"
-                >
+                <div className="flex items-center justify-center py-8">
                   <Loader2
                     className="w-6 h-6 animate-spin"
                     style={{ color: "oklch(0.72 0.13 218)" }}
                   />
                 </div>
               ) : sortedPaymentRequests.length === 0 ? (
-                <div
-                  className="text-center py-8"
-                  data-ocid="admin.payments.empty_state"
-                >
+                <div className="text-center py-8">
                   <p
                     className="text-base"
                     style={{ color: "oklch(0.73 0.03 235)" }}
@@ -947,7 +918,6 @@ export default function AdminPage() {
                         background: "oklch(0.13 0.025 248)",
                         border: "1px solid oklch(0.27 0.055 248)",
                       }}
-                      data-ocid={`admin.payment.item.${i + 1}` as string}
                     >
                       <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div className="space-y-1 flex-1 min-w-0">
@@ -989,9 +959,6 @@ export default function AdminPage() {
                                     : "oklch(0.72 0.13 218)",
                                 border: "1px solid oklch(0.72 0.13 218 / 0.2)",
                               }}
-                              data-ocid={
-                                `admin.copy_tx.button.${i + 1}` as string
-                              }
                             >
                               <Copy className="w-3 h-3" />
                               {copiedTx === `${req.nickname}-${i}`
@@ -1007,9 +974,6 @@ export default function AdminPage() {
                                 color: "oklch(0.50 0.15 145)",
                                 border: "1px solid oklch(0.50 0.15 145 / 0.3)",
                               }}
-                              data-ocid={
-                                `admin.grant_access.button.${i + 1}` as string
-                              }
                             >
                               <CheckCircle className="w-3 h-3" />{" "}
                               Musterschreiben freischalten
@@ -1038,9 +1002,6 @@ export default function AdminPage() {
                                   border:
                                     "1px solid oklch(0.55 0.15 145 / 0.3)",
                                 }}
-                                data-ocid={
-                                  `admin.approve_button.${i + 1}` as string
-                                }
                               >
                                 <CheckCircle className="w-4 h-4" /> Genehmigen
                               </button>
@@ -1053,9 +1014,6 @@ export default function AdminPage() {
                                   color: "oklch(0.62 0.22 25)",
                                   border: "1px solid oklch(0.62 0.22 25 / 0.3)",
                                 }}
-                                data-ocid={
-                                  `admin.reject_button.${i + 1}` as string
-                                }
                               >
                                 <XCircle className="w-4 h-4" /> Ablehnen
                               </button>
@@ -1072,7 +1030,7 @@ export default function AdminPage() {
         </div>
       </motion.div>
 
-      {/* PDF Management – full width, below Zahlungseingänge */}
+      {/* ODT Management – full width */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1098,7 +1056,7 @@ export default function AdminPage() {
             data-ocid="admin.pdf_management.toggle"
           >
             <span className="font-bold" style={{ fontSize: "1.625rem" }}>
-              Verwaltung der eingestellten PDF&apos;s
+              Verwaltung der eingestellten ODT&apos;s
             </span>
             {showPdfManagement ? (
               <ChevronUp
@@ -1120,7 +1078,7 @@ export default function AdminPage() {
                   className="text-base"
                   style={{ color: "oklch(0.73 0.03 235)" }}
                 >
-                  PDFs für die vier Musterschreiben-Blöcke verwalten
+                  ODT-Dateien für die vier Musterschreiben-Blöcke verwalten
                 </p>
                 <button
                   type="button"
@@ -1130,17 +1088,13 @@ export default function AdminPage() {
                     color: "oklch(0.72 0.13 218)",
                     border: "1px solid oklch(0.72 0.13 218 / 0.35)",
                   }}
-                  data-ocid="admin.pdf_management.button"
                 >
                   Aktualisieren
                 </button>
               </div>
 
               {loadingPdfs ? (
-                <div
-                  className="flex items-center justify-center py-10"
-                  data-ocid="admin.pdf_management.loading_state"
-                >
+                <div className="flex items-center justify-center py-10">
                   <Loader2
                     className="w-6 h-6 animate-spin"
                     style={{ color: "oklch(0.72 0.13 218)" }}

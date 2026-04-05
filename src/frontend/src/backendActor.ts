@@ -62,19 +62,18 @@ function fromCandidPaymentRecord(r: PaymentRequestRecord): PaymentRequest {
   };
 }
 
-// Convert Candid PdfEntryRecord to PdfEntry
+// Convert raw PDF record to PdfEntry (now uses base64Data)
 function fromCandidPdfEntry(r: Record<string, unknown>): PdfEntry {
   return {
     id: r.id as string,
     blockId: r.blockId as string,
     filename: r.filename as string,
-    hash: r.hash as string,
+    base64Data: r.base64Data as string,
     uploadedAt: r.uploadedAt as bigint,
   };
 }
 
 // ALL methods that should use the raw actor directly (no processError wrapper)
-// login and register are included here so they never throw exceptions on backend errors
 const RAW_METHODS = new Set([
   "login",
   "register",

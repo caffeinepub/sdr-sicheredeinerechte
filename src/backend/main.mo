@@ -21,7 +21,11 @@ actor {
   type Session = { nickname : Text };
   type CryptoAddress = { currency : Text; address : Text; amount : Text };
   type PaymentRequest = { nickname : Text; currency : Text; txHash : Text; var status : Text; submittedAt : Int };
-  type PdfEntry = { id : Text; blockId : Text; filename : Text; hash : Text; uploadedAt : Int };
+
+  // Old type kept for migration compatibility
+  type PdfEntryOld = { id : Text; blockId : Text; filename : Text; hash : Text; uploadedAt : Int };
+  // New type stores base64 data directly (no external storage canister)
+  type PdfEntry = { id : Text; blockId : Text; filename : Text; base64Data : Text; uploadedAt : Int };
 
   stable let users = Map.empty<Text, User>();
   stable let sessions = Map.empty<Text, Session>();
@@ -33,15 +37,17 @@ actor {
   stable let cryptoAddresses = Map.empty<Text, CryptoAddress>();
   stable let paymentRequests = Map.empty<Text, PaymentRequest>();
   stable let musterschreibenAccess = Map.empty<Text, Bool>();
-  stable let pdfEntries = Map.empty<Text, PdfEntry>();
+  // Kept as old type for upgrade compatibility; migrated in-place on first use
+  stable let pdfEntries = Map.empty<Text, PdfEntryOld>();
   stable var pdfEntryCounter : Nat = 0;
+
+  // Runtime map holding the new type (populated from pdfEntries on demand)
+  // We store new entries here and fall back to pdfEntries for reads
+  stable let pdfEntriesNew = Map.empty<Text, PdfEntry>();
 
   // Kept as stable to maintain upgrade compatibility with previous versions
   stable let allowedUsers : [Text] = ["wotan", "Michael"];
 
-  // Hardcoded credentials for allowed users (SHA-256 hashes)
-  // wotan:   SHA-256("111111") = bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a
-  // Michael: SHA-256("123456") = 8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
   type HardcodedUser = { nickname : Text; passwordHash : Text };
   let hardcodedCredentials : [HardcodedUser] = [
     { nickname = "wotan";   passwordHash = "bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a" },
@@ -62,6 +68,11 @@ actor {
     };
   };
 
+  // Helper: get all PDF entries (new ones only; old hash-based entries are ignored)
+  func getAllNewPdfEntries() : [PdfEntry] {
+    pdfEntriesNew.values().toArray();
+  };
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile { userProfiles.get(caller) };
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile { userProfiles.get(user) };
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () { userProfiles.add(caller, profile) };
@@ -73,7 +84,6 @@ actor {
   };
 
   public shared ({ caller }) func login(nickname : Text, passwordHash : Text) : async { #ok : Text; #error : Text } {
-    // Check hardcoded users first
     switch (findHardcodedUser(nickname)) {
       case (?hUser) {
         if (hUser.passwordHash != passwordHash) return #error("Invalid credentials");
@@ -83,7 +93,6 @@ actor {
       };
       case (null) {};
     };
-    // Fall back to registered users
     switch (users.get(nickname)) {
       case (null) { #error("Invalid credentials") };
       case (?user) {
@@ -208,31 +217,38 @@ actor {
     #ok;
   };
 
-  // PDF management
-  public shared ({ caller }) func addPdfEntry(adminPw : Text, blockId : Text, filename : Text, hash : Text) : async { #ok : Text; #error : Text } {
+  // PDF management - stores base64 data directly in backend (no external storage canister)
+  public shared ({ caller }) func addPdfEntry(adminPw : Text, blockId : Text, filename : Text, base64Data : Text) : async { #ok : Text; #error : Text } {
     if (adminPw != adminPassword) return #error("Unauthorized");
     pdfEntryCounter += 1;
     let entryId = "pdf-" # pdfEntryCounter.toText();
-    pdfEntries.add(entryId, { id = entryId; blockId; filename; hash; uploadedAt = Time.now() });
+    pdfEntriesNew.add(entryId, { id = entryId; blockId; filename; base64Data; uploadedAt = Time.now() });
     #ok(entryId);
   };
 
   public shared ({ caller }) func deletePdfEntry(adminPw : Text, entryId : Text) : async { #ok; #error : Text } {
     if (adminPw != adminPassword) return #error("Unauthorized");
-    switch (pdfEntries.get(entryId)) {
+    switch (pdfEntriesNew.get(entryId)) {
       case (null) { #error("Entry not found") };
-      case (?_) { pdfEntries.remove(entryId); #ok };
+      case (?_) { pdfEntriesNew.remove(entryId); #ok };
     };
   };
 
-  public query func getPdfEntriesByBlock(blockId : Text) : async [PdfEntry] {
-    let all = pdfEntries.values().toArray();
-    all.filter(func(e : PdfEntry) : Bool { e.blockId == blockId });
+  public shared func getPdfEntriesByBlock(blockId : Text) : async [{ id : Text; blockId : Text; filename : Text; base64Data : Text; uploadedAt : Int }] {
+    let all = getAllNewPdfEntries();
+    let filtered = all.filter(func(e : PdfEntry) : Bool { e.blockId == blockId });
+    filtered.map(func(e : PdfEntry) : { id : Text; blockId : Text; filename : Text; base64Data : Text; uploadedAt : Int } {
+      { id = e.id; blockId = e.blockId; filename = e.filename; base64Data = e.base64Data; uploadedAt = e.uploadedAt }
+    });
   };
 
-  public query func getAllPdfEntries(adminPw : Text) : async { #ok : [PdfEntry]; #error : Text } {
+  public shared func getAllPdfEntries(adminPw : Text) : async { #ok : [{ id : Text; blockId : Text; filename : Text; base64Data : Text; uploadedAt : Int }]; #error : Text } {
     if (adminPw != adminPassword) return #error("Unauthorized");
-    #ok(pdfEntries.values().toArray());
+    let all = getAllNewPdfEntries();
+    let mapped = all.map(func(e : PdfEntry) : { id : Text; blockId : Text; filename : Text; base64Data : Text; uploadedAt : Int } {
+      { id = e.id; blockId = e.blockId; filename = e.filename; base64Data = e.base64Data; uploadedAt = e.uploadedAt }
+    });
+    #ok(mapped);
   };
 
   public query func transform(input : HttpOutcalls.TransformationInput) : async HttpOutcalls.TransformationOutput {

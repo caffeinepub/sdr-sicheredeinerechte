@@ -33,7 +33,7 @@ const PdfEntry = IDL.Record({
   'id' : IDL.Text,
   'blockId' : IDL.Text,
   'filename' : IDL.Text,
-  'hash' : IDL.Text,
+  'base64Data' : IDL.Text,
   'uploadedAt' : IDL.Int,
 });
 
@@ -151,12 +151,12 @@ export const idlService = IDL.Service({
   'getPdfEntriesByBlock' : IDL.Func(
       [IDL.Text],
       [IDL.Vec(PdfEntry)],
-      ['query'],
+      [],
     ),
   'getAllPdfEntries' : IDL.Func(
       [IDL.Text],
       [IDL.Variant({ 'ok' : IDL.Vec(PdfEntry), 'error' : IDL.Text })],
-      ['query'],
+      [],
     ),
   '_caffeineStorageCreateCertificate' : IDL.Func(
       [IDL.Text],
@@ -188,7 +188,7 @@ export const idlFactory = ({ IDL }) => {
     'id' : IDL.Text,
     'blockId' : IDL.Text,
     'filename' : IDL.Text,
-    'hash' : IDL.Text,
+    'base64Data' : IDL.Text,
     'uploadedAt' : IDL.Int,
   });
   return IDL.Service({
@@ -305,12 +305,12 @@ export const idlFactory = ({ IDL }) => {
     'getPdfEntriesByBlock' : IDL.Func(
         [IDL.Text],
         [IDL.Vec(PdfEntry)],
-        ['query'],
+        [],
       ),
     'getAllPdfEntries' : IDL.Func(
         [IDL.Text],
         [IDL.Variant({ 'ok' : IDL.Vec(PdfEntry), 'error' : IDL.Text })],
-        ['query'],
+        [],
       ),
     '_caffeineStorageCreateCertificate' : IDL.Func(
         [IDL.Text],

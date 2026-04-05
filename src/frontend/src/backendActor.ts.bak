@@ -21,8 +21,9 @@ async function getRawActor(): Promise<
   const { loadConfig } = await import("./config");
   const config = await loadConfig();
   const agent = new HttpAgent({ host: config.backend_host });
-  // Always fetch root key - works on localhost and ICP staging/draft environments
-  await agent.fetchRootKey().catch(() => {});
+  if (config.backend_host?.includes("localhost")) {
+    await agent.fetchRootKey().catch(() => {});
+  }
   rawActorInstance = Actor.createActor<_SERVICE>(idlFactory, {
     agent,
     canisterId: config.backend_canister_id,

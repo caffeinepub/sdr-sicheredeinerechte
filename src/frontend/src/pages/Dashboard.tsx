@@ -297,40 +297,88 @@ export default function Dashboard() {
             </div>
           ) : (
             <div>
+              {/* Heading in blue */}
               <h2
-                className="font-bold text-2xl mb-3"
-                style={{ color: "oklch(0.96 0.015 230)" }}
+                className="font-bold text-2xl mb-4"
+                style={{ color: "oklch(0.72 0.13 218)" }}
               >
-                Musterschreiben freischalten
+                Ihr Zugang zu professionellen Vorlagen
               </h2>
-              <p
-                className="text-base leading-relaxed mb-2"
-                style={{ color: "oklch(0.73 0.03 235)" }}
+
+              {/* Text block enlarged by 30% — base font-size: 1.3rem */}
+              <div
+                className="leading-relaxed mb-6 space-y-4"
+                style={{ fontSize: "1.3rem", color: "oklch(0.73 0.03 235)" }}
               >
-                Erhalten Sie Zugang zu professionellen Musterschreiben für den
-                Umgang mit sogenannten Behörden, Ämtern oder Gerichten. Unsere
-                Vorlagen helfen Ihnen, Ihre Rechte zu wahren.
-              </p>
-              <ul
-                className="text-base mb-5 space-y-2"
-                style={{ color: "oklch(0.73 0.03 235)" }}
-              >
-                <li>
-                  ✓ Zurückweisung von mangelhaften Behörden-, Amts- oder
-                  Gerichtsschreiben (sogenannte Beschlüsse, Bescheide, Urteile,
-                  Zahlungsaufforderungen etc.)
-                </li>
-                <li>
-                  ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
-                  Forderung (sogenannte Bußgelder, Steuern etc.) unter Vorbehalt
-                  der Rechtmäßigkeit.
-                </li>
-                <li>
-                  ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
-                  Forderung (sogenannte Bußgelder, Steuern etc.) unter Vorbehalt
-                  der Rechtmäßigkeit in Verbindung mit einem Gegenangebot.
-                </li>
-              </ul>
+                <p>
+                  Unsere sorgfältig erarbeiteten Musterschreiben und Erklärungen
+                  bieten Ihnen einen direkten Zugang zu rechtlich fundierten
+                  Vorlagen, die Ihnen Zeit, Aufwand und unnötige Kosten sparen.
+                  Während Standardvorlagen von Rechtsanwälten oft höherpreisig
+                  kosten und dabei nicht zwangsläufig die gleiche Qualität
+                  bieten, erhalten Sie hier praxisnahe Dokumente zu einem fairen
+                  Ausgleich.
+                </p>
+
+                {/* Payment sentence: additional 30% larger (1.3 × 1.3 = 1.69em relative to container), bold, white */}
+                <p
+                  style={{
+                    fontSize: "1.3em",
+                    fontWeight: "bold",
+                    color: "#ffffff",
+                  }}
+                >
+                  Für den Zugang zu diesen Musterschreiben und Erklärungen
+                  erheben wir einen einmaligen Energieausgleich in Höhe von
+                  120,00 EURO [sic]. Dieser Betrag ist in einer von uns
+                  akzeptierten Kryptowährung zum jeweiligen Marktwert zum
+                  Zeitpunkt des Ausgleichs zu leisten.
+                </p>
+
+                <p>
+                  Dieser Ausgleich honoriert die investierte Zeit, Expertise und
+                  Sorgfalt, die in jede Vorlage und Erklärung eingeflossen ist.
+                  Denn jede Leistung – auch digitale – hat ihren Wert, und ein
+                  fairer Ausgleich ermöglicht es uns, weiterhin qualitativ
+                  hochwertige Inhalte für Sie zu erstellen.
+                </p>
+                <p>
+                  Erhalten Sie nach geleistetem Ausgleich Zugang zu 12
+                  professionellen Musterschreiben inclusive Erklärungen für den
+                  Umgang mit sogenannten Behörden, Ämtern oder Gerichten. Unsere
+                  Vorlagen helfen Ihnen, Ihre Rechte zu wahren.
+                </p>
+                <ul className="space-y-2 list-none pl-2">
+                  <li>
+                    ✓ Zurückweisung von mangelhaften Behörden-, Amts- oder
+                    Gerichtsschreiben (sogenannte Beschlüsse, Bescheide,
+                    Urteile, Zahlungsaufforderungen etc.)
+                  </li>
+                  <li>
+                    ✓ Bedingte Annahme von Behörden-, Amts- oder
+                    Gerichtsschreiben.
+                  </li>
+                  <li>
+                    ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
+                    Forderung (sogenannte Bußgelder, Steuern etc.) unter
+                    Vorbehalt der Rechtmäßigkeit.
+                  </li>
+                  <li>
+                    ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
+                    Forderung (sogenannte Bußgelder, Steuern etc.) unter
+                    Vorbehalt der Rechtmäßigkeit in Verbindung mit einem
+                    Gegenangebot.
+                  </li>
+                </ul>
+                <p>
+                  Wenn Sie mit unseren Musterschreiben und Erklärungen
+                  begeistert sind, würden wir uns über Ihre Weiterempfehlung
+                  sehr freuen. Damit unterstützen Sie uns dabei, dieses Angebot
+                  langfristig aufrechtzuerhalten, kontinuierlich neue
+                  hochwertige Vorlagen zu entwickeln und einen Beitrag zu mehr
+                  Klarheit und Fairness im Recht zu leisten.
+                </p>
+              </div>
               <p
                 className="text-sm mb-5"
                 style={{ color: "oklch(0.55 0.02 235)" }}
@@ -370,7 +418,7 @@ export default function Dashboard() {
           )}
         </motion.div>
 
-        {/* Quote */}
+        {/* Quote — reduced by 20%: was text-2xl sm:text-3xl lg:text-4xl → now text-xl sm:text-2xl lg:text-3xl */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -383,7 +431,7 @@ export default function Dashboard() {
           data-ocid="dashboard.quote.panel"
         >
           <blockquote
-            className="font-bold text-2xl sm:text-3xl lg:text-4xl leading-relaxed mb-4 italic"
+            className="font-bold text-xl sm:text-2xl lg:text-3xl leading-relaxed mb-4 italic"
             style={{ color: "oklch(0.72 0.13 218)" }}
           >
             „Handle stets so, daß die Anzahl deiner Möglichkeiten größer wird."

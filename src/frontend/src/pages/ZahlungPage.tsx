@@ -255,37 +255,14 @@ export default function ZahlungPage() {
             className="font-bold text-3xl sm:text-4xl mb-3"
             style={{ color: "oklch(0.96 0.015 230)" }}
           >
-            Ihr Zugang zu professionellen Vorlagen
+            Musterschreiben freischalten
           </h1>
           <div
             className="text-lg leading-relaxed mb-10 space-y-4"
             style={{ color: "oklch(0.73 0.03 235)" }}
           >
             <p>
-              Unsere sorgfältig erarbeiteten Musterschreiben und Erklärungen
-              bieten Ihnen einen direkten Zugang zu rechtlich fundierten
-              Vorlagen, die Ihnen Zeit, Aufwand und unnötige Kosten sparen.
-              Während Standardvorlagen von Rechtsanwälten oft höherpreisig
-              kosten und dabei nicht zwangsläufig die gleiche Qualität bieten,
-              erhalten Sie hier praxisnahe Dokumente zu einem fairen Ausgleich.
-            </p>
-            <p>
-              Für den Zugang zu diesen Musterschreiben und Erklärungen erheben
-              wir einen einmaligen Energieausgleich in Höhe von 120,00 EURO
-              [sic]. Dieser Betrag ist in einer von uns akzeptierten
-              Kryptowährung zum jeweiligen Marktwert zum Zeitpunkt des
-              Ausgleichs zu leisten.
-            </p>
-            <p>
-              Dieser Ausgleich honoriert die investierte Zeit, Expertise und
-              Sorgfalt, die in jede Vorlage und Erklärung eingeflossen ist. Denn
-              jede Leistung – auch digitale – hat ihren Wert, und ein fairer
-              Ausgleich ermöglicht es uns, weiterhin qualitativ hochwertige
-              Inhalte für Sie zu erstellen.
-            </p>
-            <p>
-              Erhalten Sie nach geleistetem Ausgleich Zugang zu 12
-              professionellen Musterschreiben inclusive Erklärungen für den
+              Erhalten Sie Zugang zu professionellen Musterschreiben für den
               Umgang mit sogenannten Behörden, Ämtern oder Gerichten. Unsere
               Vorlagen helfen Ihnen, Ihre Rechte zu wahren.
             </p>
@@ -294,9 +271,6 @@ export default function ZahlungPage() {
                 ✓ Zurückweisung von mangelhaften Behörden-, Amts- oder
                 Gerichtsschreiben (sogenannte Beschlüsse, Bescheide, Urteile,
                 Zahlungsaufforderungen etc.)
-              </li>
-              <li>
-                ✓ Bedingte Annahme von Behörden-, Amts- oder Gerichtsschreiben.
               </li>
               <li>
                 ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
@@ -309,14 +283,6 @@ export default function ZahlungPage() {
                 der Rechtmäßigkeit in Verbindung mit einem Gegenangebot.
               </li>
             </ul>
-            <p>
-              Wenn Sie mit unseren Musterschreiben und Erklärungen begeistert
-              sind, würden wir uns über Ihre Weiterempfehlung sehr freuen. Damit
-              unterstützen Sie uns dabei, dieses Angebot langfristig
-              aufrechtzuerhalten, kontinuierlich neue hochwertige Vorlagen zu
-              entwickeln und einen Beitrag zu mehr Klarheit und Fairness im
-              Recht zu leisten.
-            </p>
           </div>
 
           {/* Payment Status Banner */}

@@ -57,6 +57,11 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Nat, 'error' : IDL.Text })],
       ['query'],
     ),
+  'getMusterschreibenCount' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Nat, 'error' : IDL.Text })],
+      ['query'],
+    ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isRegistered' : IDL.Func([], [IDL.Bool], ['query']),
   'login' : IDL.Func(
@@ -173,6 +178,11 @@ export const idlFactory = ({ IDL }) => {
     'incrementVisitorCount' : IDL.Func([], [], []),
     'recordHeartbeat' : IDL.Func([IDL.Text], [], []),
     'getActiveVisitorCount' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Nat, 'error' : IDL.Text })],
+        ['query'],
+      ),
+    'getMusterschreibenCount' : IDL.Func(
         [IDL.Text],
         [IDL.Variant({ 'ok' : IDL.Nat, 'error' : IDL.Text })],
         ['query'],

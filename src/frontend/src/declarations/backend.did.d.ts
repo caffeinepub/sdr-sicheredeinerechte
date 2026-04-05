@@ -40,6 +40,11 @@ export interface _SERVICE {
     { 'ok' : bigint } |
       { 'error' : string }
   >,
+  'getMusterschreibenCount' : ActorMethod<
+    [string],
+    { 'ok' : bigint } |
+      { 'error' : string }
+  >,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isRegistered' : ActorMethod<[], boolean>,
   'login' : ActorMethod<

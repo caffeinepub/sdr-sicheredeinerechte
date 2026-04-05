@@ -31,14 +31,30 @@ actor {
   stable let paymentRequests = Map.empty<Text, PaymentRequest>();
   stable let musterschreibenAccess = Map.empty<Text, Bool>();
 
-  // Allowed users (frontend-only login, no backend registration needed)
-  let allowedUsers : [Text] = ["wotan", "Michael"];
+  // Kept as stable to maintain upgrade compatibility with previous versions
+  stable let allowedUsers : [Text] = ["wotan", "Michael"];
+
+  // Hardcoded credentials for allowed users (SHA-256 hashes)
+  // wotan:   SHA-256("111111") = bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a
+  // Michael: SHA-256("123456") = 8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
+  type HardcodedUser = { nickname : Text; passwordHash : Text };
+  let hardcodedCredentials : [HardcodedUser] = [
+    { nickname = "wotan";   passwordHash = "bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a" },
+    { nickname = "Michael"; passwordHash = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92" },
+  ];
+
+  func findHardcodedUser(nickname : Text) : ?HardcodedUser {
+    for (u in hardcodedCredentials.vals()) {
+      if (u.nickname == nickname) return ?u;
+    };
+    null;
+  };
 
   func isAllowedUser(nickname : Text) : Bool {
-    for (u in allowedUsers.vals()) {
-      if (u == nickname) return true;
+    switch (findHardcodedUser(nickname)) {
+      case (?_) true;
+      case (null) { users.containsKey(nickname) };
     };
-    users.containsKey(nickname);
   };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile { userProfiles.get(caller) };
@@ -52,6 +68,17 @@ actor {
   };
 
   public shared ({ caller }) func login(nickname : Text, passwordHash : Text) : async { #ok : Text; #error : Text } {
+    // Check hardcoded users first
+    switch (findHardcodedUser(nickname)) {
+      case (?hUser) {
+        if (hUser.passwordHash != passwordHash) return #error("Invalid credentials");
+        let sessionToken = nickname # "-" # visitorCount.toText();
+        sessions.add(sessionToken, { nickname = nickname });
+        return #ok(sessionToken);
+      };
+      case (null) {};
+    };
+    // Fall back to registered users
     switch (users.get(nickname)) {
       case (null) { #error("Invalid credentials") };
       case (?user) {
@@ -114,8 +141,6 @@ actor {
 
   public query func getCryptoAddresses() : async [CryptoAddress] { cryptoAddresses.values().toArray() };
 
-  // submitPaymentProof: accepts any nickname that is either in the allowed list or registered
-  // No "User not found" error for hardcoded frontend-only users
   public shared ({ caller }) func submitPaymentProof(nickname : Text, currency : Text, txHash : Text) : async { #ok; #error : Text } {
     if (not isAllowedUser(nickname)) return #error("User not found");
     switch (musterschreibenAccess.get(nickname)) {

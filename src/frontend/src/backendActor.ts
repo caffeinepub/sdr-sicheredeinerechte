@@ -70,6 +70,7 @@ const RAW_METHODS = new Set([
   "register",
   "recordHeartbeat",
   "getActiveVisitorCount",
+  "getMusterschreibenCount",
   "getVisitorCount",
   "incrementVisitorCount",
   "setCryptoAddress",
@@ -121,6 +122,7 @@ export const backend: backendInterface = new Proxy({} as backendInterface, {
             return result;
 
           case "getActiveVisitorCount":
+          case "getMusterschreibenCount":
           case "getVisitorCount":
           case "approvePayment":
           case "rejectPayment":

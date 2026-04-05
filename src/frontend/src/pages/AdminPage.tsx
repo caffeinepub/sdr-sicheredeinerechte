@@ -6,6 +6,7 @@ import {
   ChevronUp,
   Copy,
   Loader2,
+  LogOut,
   Shield,
   Users,
   XCircle,
@@ -228,30 +229,51 @@ export default function AdminPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="flex items-center gap-3 mb-8">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{
-                background: "oklch(0.72 0.13 218 / 0.15)",
-                border: "1px solid oklch(0.72 0.13 218 / 0.35)",
-              }}
-            >
-              <Shield
-                className="w-5 h-5"
-                style={{ color: "oklch(0.72 0.13 218)" }}
-              />
-            </div>
-            <div>
-              <p
-                className="font-bold text-base"
-                style={{ color: "oklch(0.96 0.015 230)" }}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{
+                  background: "oklch(0.72 0.13 218 / 0.15)",
+                  border: "1px solid oklch(0.72 0.13 218 / 0.35)",
+                }}
               >
-                SDR Admin
-              </p>
-              <p className="text-sm" style={{ color: "oklch(0.73 0.03 235)" }}>
-                Verwaltungsbereich
-              </p>
+                <Shield
+                  className="w-5 h-5"
+                  style={{ color: "oklch(0.72 0.13 218)" }}
+                />
+              </div>
+              <div>
+                <p
+                  className="font-bold text-base"
+                  style={{ color: "oklch(0.96 0.015 230)" }}
+                >
+                  SDR Admin
+                </p>
+                <p
+                  className="text-sm"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Verwaltungsbereich
+                </p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = "/";
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-base font-semibold transition-all"
+              style={{
+                background: "oklch(0.55 0.22 25 / 0.15)",
+                color: "oklch(0.75 0.22 25)",
+                border: "1px solid oklch(0.62 0.22 25 / 0.4)",
+              }}
+              data-ocid="admin.logout.button"
+            >
+              <LogOut className="w-4 h-4" />
+              Abmelden
+            </button>
           </div>
 
           <motion.div

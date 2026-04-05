@@ -83,6 +83,58 @@ function CurrencyIcon({
   );
 }
 
+function CollapsibleFaq({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: "oklch(0.17 0.03 248)",
+        border: "1px solid oklch(0.27 0.055 248)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="w-full flex items-center justify-between px-6 py-4 text-left transition-all"
+        style={{ color: "oklch(0.96 0.015 230)" }}
+      >
+        <span
+          className="font-semibold text-lg"
+          style={{ color: "oklch(0.72 0.13 218)" }}
+        >
+          {title}
+        </span>
+        {open ? (
+          <ChevronUp
+            className="w-5 h-5 flex-shrink-0"
+            style={{ color: "oklch(0.72 0.13 218)" }}
+          />
+        ) : (
+          <ChevronDown
+            className="w-5 h-5 flex-shrink-0"
+            style={{ color: "oklch(0.72 0.13 218)" }}
+          />
+        )}
+      </button>
+      {open && (
+        <div
+          className="px-6 pb-5 text-base leading-relaxed"
+          style={{ color: "oklch(0.82 0.03 235)" }}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ZahlungPage() {
   const [nickname, setNickname] = useState("");
   const [paymentStatus, setPaymentStatus] = useState<PaymentRequest | null>(
@@ -251,38 +303,49 @@ export default function ZahlungPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
+          {/* Change 1: heading color changed to blue */}
           <h1
             className="font-bold text-3xl sm:text-4xl mb-3"
-            style={{ color: "oklch(0.96 0.015 230)" }}
+            style={{ color: "oklch(0.72 0.13 218)" }}
           >
             Musterschreiben freischalten
           </h1>
+          {/* Change 2: replaced description block, removed space-y-4 */}
           <div
-            className="text-lg leading-relaxed mb-10 space-y-4"
+            className="text-lg leading-relaxed mb-6"
             style={{ color: "oklch(0.73 0.03 235)" }}
           >
             <p>
-              Erhalten Sie Zugang zu professionellen Musterschreiben für den
-              Umgang mit sogenannten Behörden, Ämtern oder Gerichten. Unsere
-              Vorlagen helfen Ihnen, Ihre Rechte zu wahren.
+              Überweisen Sie den geforderten Ausgleich in einer der
+              unterstützten Kryptowährungen an die unten angegebene Adresse. Als
+              Nachweis Ihres Ausgleichs wählen Sie bitte anschließend Ihre
+              verwendete Kryptowährung aus, geben Ihren Transaktions-Hash ein
+              und drücken den Button „Ausgleich bestätigen". Nach Eingang und
+              Prüfung der übermittelten Daten wird Ihnen der Zugang innerhalb
+              von 24 Stunden zu den Musterschreiben und Erklärungen
+              freigeschaltet.
             </p>
-            <ul className="space-y-2 list-none pl-2">
-              <li>
-                ✓ Zurückweisung von mangelhaften Behörden-, Amts- oder
-                Gerichtsschreiben (sogenannte Beschlüsse, Bescheide, Urteile,
-                Zahlungsaufforderungen etc.)
-              </li>
-              <li>
-                ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
-                Forderung (sogenannte Bußgelder, Steuern etc.) unter Vorbehalt
-                der Rechtmäßigkeit.
-              </li>
-              <li>
-                ✓ Annahme von behördlichen, amtlichen oder gerichtlichen
-                Forderung (sogenannte Bußgelder, Steuern etc.) unter Vorbehalt
-                der Rechtmäßigkeit in Verbindung mit einem Gegenangebot.
-              </li>
-            </ul>
+          </div>
+
+          {/* Two collapsible FAQ boxes */}
+          <div className="space-y-3 mb-10">
+            <CollapsibleFaq title="Was ist ein Transaktions-Hash?">
+              Ein Transaktions-Hash ist eine eindeutige Kennung für eine
+              Überweisung auf einer Blockchain, zum Beispiel bei Bitcoin. Man
+              kann ihn sich wie eine Sendungsnummer bei einem Paket vorstellen.
+              Jede Transaktion bekommt so einen eigenen Code, damit sie
+              jederzeit eindeutig identifiziert und nachverfolgt werden kann.
+              Wenn Sie zum Beispiel Geld mit einer Krypto-Wallet verschicken,
+              wird dieser Hash automatisch erzeugt. Kurz gesagt, der
+              Transaktions-Hash ist die ID Ihrer Überweisung, mit der Sie
+              jederzeit prüfen können, was damit passiert ist.
+            </CollapsibleFaq>
+            <CollapsibleFaq title="Wo finde ich den Transaktions-Hash?">
+              Sie finden den Transaktions-Hash direkt in Ihrer Wallet-App in den
+              Details der jeweiligen Transaktion. Außerdem können Sie ihn in den
+              jeweiligen Blockchain-Explorern eingeben, um genau zu sehen, ob
+              und wann die Transaktion bestätigt wurde.
+            </CollapsibleFaq>
           </div>
 
           {/* Payment Status Banner */}
@@ -502,18 +565,20 @@ export default function ZahlungPage() {
                 border: "1px solid oklch(0.27 0.055 248)",
               }}
             >
+              {/* Change 3: heading 20% larger and blue */}
               <h2
-                className="font-bold text-2xl mb-2"
-                style={{ color: "oklch(0.96 0.015 230)" }}
+                className="font-bold mb-2"
+                style={{ color: "oklch(0.72 0.13 218)", fontSize: "1.8rem" }}
               >
                 Ausgleich bestätigen
               </h2>
+              {/* Change 4: updated sentence */}
               <p
                 className="text-base mb-6"
                 style={{ color: "oklch(0.73 0.03 235)" }}
               >
-                Nach der Überweisung geben Sie bitte Ihren Transaktions-Hash
-                ein.
+                Nach der Überweisung wählen Sie bitte Ihre verwendete
+                Kryptowährung aus und geben Ihren Transaktions-Hash ein.
               </p>
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">

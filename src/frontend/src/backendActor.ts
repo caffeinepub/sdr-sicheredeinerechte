@@ -1,5 +1,5 @@
 import { Actor, HttpAgent } from "@icp-sdk/core/agent";
-import type { PaymentRequest, backendInterface } from "./backend.d";
+import type { PaymentRequest, PdfEntry, backendInterface } from "./backend.d";
 import { createActorWithConfig } from "./config";
 import { idlFactory } from "./declarations/backend.did";
 import type {
@@ -63,6 +63,17 @@ function fromCandidPaymentRecord(r: PaymentRequestRecord): PaymentRequest {
   };
 }
 
+// Convert Candid PdfEntryRecord to PdfEntry
+function fromCandidPdfEntry(r: Record<string, unknown>): PdfEntry {
+  return {
+    id: r.id as string,
+    blockId: r.blockId as string,
+    filename: r.filename as string,
+    hash: r.hash as string,
+    uploadedAt: r.uploadedAt as bigint,
+  };
+}
+
 // ALL methods that should use the raw actor directly (no processError wrapper)
 // login and register are included here so they never throw exceptions on backend errors
 const RAW_METHODS = new Set([
@@ -84,6 +95,10 @@ const RAW_METHODS = new Set([
   "grantMusterschreibenAccess",
   "revokeMusterschreibenAccess",
   "verifyBTCTransaction",
+  "addPdfEntry",
+  "deletePdfEntry",
+  "getPdfEntriesByBlock",
+  "getAllPdfEntries",
 ]);
 
 export const backend: backendInterface = new Proxy({} as backendInterface, {
@@ -164,6 +179,30 @@ export const backend: backendInterface = new Proxy({} as backendInterface, {
             if ("confirmed" in v) return { __kind__: "confirmed" };
             if ("pending" in v) return { __kind__: "pending" };
             return { __kind__: "error", error: (v as { error: string }).error };
+          }
+
+          case "addPdfEntry":
+          case "deletePdfEntry":
+            return fromCandidResult(
+              result as { ok: unknown } | { error: string },
+            );
+
+          case "getAllPdfEntries": {
+            const r = result as
+              | { ok: Record<string, unknown>[] }
+              | { error: string };
+            if ("ok" in r) {
+              return {
+                __kind__: "ok",
+                ok: r.ok.map(fromCandidPdfEntry),
+              };
+            }
+            return { __kind__: "error", error: (r as { error: string }).error };
+          }
+
+          case "getPdfEntriesByBlock": {
+            const arr = result as Record<string, unknown>[];
+            return arr.map(fromCandidPdfEntry);
           }
 
           default:

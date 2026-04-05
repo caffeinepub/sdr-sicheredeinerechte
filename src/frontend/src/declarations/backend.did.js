@@ -29,6 +29,14 @@ const PaymentRequest = IDL.Record({
   'submittedAt' : IDL.Int,
 });
 
+const PdfEntry = IDL.Record({
+  'id' : IDL.Text,
+  'blockId' : IDL.Text,
+  'filename' : IDL.Text,
+  'hash' : IDL.Text,
+  'uploadedAt' : IDL.Int,
+});
+
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -130,9 +138,32 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'confirmed' : IDL.Null, 'pending' : IDL.Null, 'error' : IDL.Text })],
       [],
     ),
+  'addPdfEntry' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Text, 'error' : IDL.Text })],
+      [],
+    ),
+  'deletePdfEntry' : IDL.Func(
+      [IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+      [],
+    ),
+  'getPdfEntriesByBlock' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(PdfEntry)],
+      ['query'],
+    ),
+  'getAllPdfEntries' : IDL.Func(
+      [IDL.Text],
+      [IDL.Variant({ 'ok' : IDL.Vec(PdfEntry), 'error' : IDL.Text })],
+      ['query'],
+    ),
+  '_caffeineStorageCreateCertificate' : IDL.Func(
+      [IDL.Text],
+      [IDL.Record({ 'method' : IDL.Text, 'blob_hash' : IDL.Text })],
+      [],
+    ),
 });
-
-export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
   const UserRole = IDL.Variant({
@@ -153,7 +184,13 @@ export const idlFactory = ({ IDL }) => {
     'status' : IDL.Text,
     'submittedAt' : IDL.Int,
   });
-  
+  const PdfEntry = IDL.Record({
+    'id' : IDL.Text,
+    'blockId' : IDL.Text,
+    'filename' : IDL.Text,
+    'hash' : IDL.Text,
+    'uploadedAt' : IDL.Int,
+  });
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -253,6 +290,31 @@ export const idlFactory = ({ IDL }) => {
     'verifyBTCTransaction' : IDL.Func(
         [IDL.Text, IDL.Text],
         [IDL.Variant({ 'confirmed' : IDL.Null, 'pending' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'addPdfEntry' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Text, 'error' : IDL.Text })],
+        [],
+      ),
+    'deletePdfEntry' : IDL.Func(
+        [IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'getPdfEntriesByBlock' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(PdfEntry)],
+        ['query'],
+      ),
+    'getAllPdfEntries' : IDL.Func(
+        [IDL.Text],
+        [IDL.Variant({ 'ok' : IDL.Vec(PdfEntry), 'error' : IDL.Text })],
+        ['query'],
+      ),
+    '_caffeineStorageCreateCertificate' : IDL.Func(
+        [IDL.Text],
+        [IDL.Record({ 'method' : IDL.Text, 'blob_hash' : IDL.Text })],
         [],
       ),
   });

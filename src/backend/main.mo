@@ -9,16 +9,19 @@ import Int "mo:core/Int";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import HttpOutcalls "http-outcalls/outcall";
+import BlobStorageMixin "blob-storage/Mixin";
 
 actor {
   stable let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
+  include BlobStorageMixin();
 
   public type UserProfile = { name : Text };
   type User = { nickname : Text; passwordHash : Text };
   type Session = { nickname : Text };
   type CryptoAddress = { currency : Text; address : Text; amount : Text };
   type PaymentRequest = { nickname : Text; currency : Text; txHash : Text; var status : Text; submittedAt : Int };
+  type PdfEntry = { id : Text; blockId : Text; filename : Text; hash : Text; uploadedAt : Int };
 
   stable let users = Map.empty<Text, User>();
   stable let sessions = Map.empty<Text, Session>();
@@ -30,6 +33,8 @@ actor {
   stable let cryptoAddresses = Map.empty<Text, CryptoAddress>();
   stable let paymentRequests = Map.empty<Text, PaymentRequest>();
   stable let musterschreibenAccess = Map.empty<Text, Bool>();
+  stable let pdfEntries = Map.empty<Text, PdfEntry>();
+  stable var pdfEntryCounter : Nat = 0;
 
   // Kept as stable to maintain upgrade compatibility with previous versions
   stable let allowedUsers : [Text] = ["wotan", "Michael"];
@@ -201,6 +206,33 @@ actor {
     if (adminPw != adminPassword) return #error("Unauthorized");
     musterschreibenAccess.add(nickname, false);
     #ok;
+  };
+
+  // PDF management
+  public shared ({ caller }) func addPdfEntry(adminPw : Text, blockId : Text, filename : Text, hash : Text) : async { #ok : Text; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    pdfEntryCounter += 1;
+    let entryId = "pdf-" # pdfEntryCounter.toText();
+    pdfEntries.add(entryId, { id = entryId; blockId; filename; hash; uploadedAt = Time.now() });
+    #ok(entryId);
+  };
+
+  public shared ({ caller }) func deletePdfEntry(adminPw : Text, entryId : Text) : async { #ok; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    switch (pdfEntries.get(entryId)) {
+      case (null) { #error("Entry not found") };
+      case (?_) { pdfEntries.remove(entryId); #ok };
+    };
+  };
+
+  public query func getPdfEntriesByBlock(blockId : Text) : async [PdfEntry] {
+    let all = pdfEntries.values().toArray();
+    all.filter(func(e : PdfEntry) : Bool { e.blockId == blockId });
+  };
+
+  public query func getAllPdfEntries(adminPw : Text) : async { #ok : [PdfEntry]; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+    #ok(pdfEntries.values().toArray());
   };
 
   public query func transform(input : HttpOutcalls.TransformationInput) : async HttpOutcalls.TransformationOutput {

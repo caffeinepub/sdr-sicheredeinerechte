@@ -161,6 +161,7 @@ export default function ZahlungPage() {
       .then((status) => {
         setPaymentStatus(status);
       })
+      .catch(() => {})
       .finally(() => setLoadingData(false));
   }, []);
 
@@ -176,45 +177,66 @@ export default function ZahlungPage() {
     setSubmitting(true);
     setSubmitMessage("");
     setSubmitError("");
+
+    // Step 1: Submit payment proof
+    let submitResult: { __kind__: string; error?: string } | null = null;
     try {
-      const result = await backend.submitPaymentProof(
+      submitResult = await backend.submitPaymentProof(
         nickname,
         selectedCurrency,
         txHash.trim(),
       );
-      if (result.__kind__ === "error") {
-        setSubmitError(result.error);
-      } else {
-        if (selectedCurrency === "BTC") {
-          const verify = await backend.verifyBTCTransaction(
-            txHash.trim(),
-            nickname,
-          );
-          if (verify.__kind__ === "confirmed") {
-            setSubmitMessage(
-              "BTC-Transaktion bestätigt! Ausgleich wird verarbeitet.",
-            );
-          } else if (verify.__kind__ === "pending") {
-            setSubmitMessage(
-              "Ausgleich eingereicht. BTC-Transaktion wird noch bestätigt – bitte haben Sie etwas Geduld.",
-            );
-          } else {
-            setSubmitMessage("Ausgleich eingereicht. Wird manuell geprüft.");
-          }
-        } else {
-          setSubmitMessage(
-            "Ihr Ausgleich wurde eingereicht und wird geprüft. Sie erhalten Zugang sobald der Ausgleich bestätigt ist.",
-          );
-        }
-        const updated = await backend.getMyPaymentStatus(nickname);
-        setPaymentStatus(updated);
-        setTxHash("");
-      }
-    } catch {
+    } catch (err) {
+      console.error("submitPaymentProof exception:", err);
       setSubmitError("Verbindungsfehler. Bitte erneut versuchen.");
-    } finally {
       setSubmitting(false);
+      return;
     }
+
+    if (!submitResult || submitResult.__kind__ === "error") {
+      setSubmitError(
+        submitResult?.error ?? "Unbekannter Fehler. Bitte erneut versuchen.",
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    // Step 2: Submit succeeded — handle BTC verification separately
+    if (selectedCurrency === "BTC") {
+      try {
+        const verify = await backend.verifyBTCTransaction(
+          txHash.trim(),
+          nickname,
+        );
+        if (verify.__kind__ === "confirmed") {
+          setSubmitMessage(
+            "BTC-Transaktion bestätigt! Ausgleich wird verarbeitet.",
+          );
+        } else if (verify.__kind__ === "pending") {
+          setSubmitMessage(
+            "Ausgleich eingereicht. BTC-Transaktion wird noch bestätigt – bitte haben Sie etwas Geduld.",
+          );
+        } else {
+          setSubmitMessage("Ausgleich eingereicht. Wird manuell geprüft.");
+        }
+      } catch {
+        setSubmitMessage("Ausgleich eingereicht. BTC-Verifikation steht aus.");
+      }
+    } else {
+      setSubmitMessage(
+        "Ihr Ausgleich wurde eingereicht und wird geprüft. Sie erhalten Zugang sobald der Ausgleich bestätigt ist.",
+      );
+    }
+
+    // Step 3: Refresh payment status (non-critical)
+    try {
+      const updated = await backend.getMyPaymentStatus(nickname);
+      setPaymentStatus(updated);
+    } catch {
+      // ignore
+    }
+    setTxHash("");
+    setSubmitting(false);
   };
 
   if (loadingData) {

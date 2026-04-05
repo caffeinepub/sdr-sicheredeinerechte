@@ -16,6 +16,7 @@ export type UserRole = { 'admin' : null } |
   { 'guest' : null };
 export interface CryptoAddress { 'currency' : string; 'address' : string; 'amount' : string; }
 export interface PaymentRequestRecord { 'nickname' : string; 'currency' : string; 'txHash' : string; 'status' : string; 'submittedAt' : bigint; }
+export interface PdfEntryRecord { 'id' : string; 'blockId' : string; 'filename' : string; 'hash' : string; 'uploadedAt' : bigint; }
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
@@ -102,6 +103,23 @@ export interface _SERVICE {
       { 'pending' : null } |
       { 'error' : string }
   >,
+  'addPdfEntry' : ActorMethod<
+    [string, string, string, string],
+    { 'ok' : string } |
+      { 'error' : string }
+  >,
+  'deletePdfEntry' : ActorMethod<
+    [string, string],
+    { 'ok' : null } |
+      { 'error' : string }
+  >,
+  'getPdfEntriesByBlock' : ActorMethod<[string], Array<PdfEntryRecord>>,
+  'getAllPdfEntries' : ActorMethod<
+    [string],
+    { 'ok' : Array<PdfEntryRecord> } |
+      { 'error' : string }
+  >,
+  '_caffeineStorageCreateCertificate' : ActorMethod<[string], { 'method' : string; 'blob_hash' : string }>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

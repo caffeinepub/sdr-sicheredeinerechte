@@ -6,6 +6,7 @@ export interface UserProfile { name: string; }
 export enum UserRole { admin = "admin", user = "user", guest = "guest" }
 export interface CryptoAddress { currency: string; address: string; amount: string; }
 export interface PaymentRequest { nickname: string; currency: string; txHash: string; status: string; submittedAt: bigint; }
+export interface PdfEntry { id: string; blockId: string; filename: string; hash: string; uploadedAt: bigint; }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     getAllProfiles(): Promise<Array<UserProfile>>;
@@ -34,4 +35,8 @@ export interface backendInterface {
     grantMusterschreibenAccess(adminPw: string, nickname: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
     revokeMusterschreibenAccess(adminPw: string, nickname: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
     verifyBTCTransaction(txHash: string, nickname: string): Promise<{ __kind__: "confirmed"; } | { __kind__: "pending"; } | { __kind__: "error"; error: string; }>;
+    addPdfEntry(adminPw: string, blockId: string, filename: string, hash: string): Promise<{ __kind__: "ok"; ok: string; } | { __kind__: "error"; error: string; }>;
+    deletePdfEntry(adminPw: string, entryId: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
+    getPdfEntriesByBlock(blockId: string): Promise<Array<PdfEntry>>;
+    getAllPdfEntries(adminPw: string): Promise<{ __kind__: "ok"; ok: Array<PdfEntry>; } | { __kind__: "error"; error: string; }>;
 }

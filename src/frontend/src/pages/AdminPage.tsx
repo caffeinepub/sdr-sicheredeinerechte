@@ -1,3 +1,4 @@
+import { HttpAgent } from "@icp-sdk/core/agent";
 import {
   Activity,
   BookOpen,
@@ -5,18 +6,52 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  FileText,
   Loader2,
   LogOut,
   Shield,
+  Trash2,
+  Upload,
   Users,
   XCircle,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
-import type { PaymentRequest } from "../backend.d";
+import { useEffect, useRef, useState } from "react";
+import type { PaymentRequest, PdfEntry } from "../backend.d";
 import { backend } from "../backendActor";
+import { loadConfig } from "../config";
+import { StorageClient } from "../utils/StorageClient";
 
 const ADMIN_PASSWORD = "WotanClan44!";
+
+const PDF_BLOCKS = [
+  { id: "zurueckweisung", title: "Zurückweisung" },
+  { id: "bedingte_annahme", title: "Bedingte Annahme" },
+  { id: "annahme_unter_vorbehalt", title: "Annahme unter Vorbehalt" },
+  {
+    id: "annahme_unter_vorbehalt_gegenangebot",
+    title: "Annahme unter Vorbehalt inkl. Gegenangebot",
+  },
+];
+
+async function uploadPdf(
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<string> {
+  const config = await loadConfig();
+  const agent = new HttpAgent({ host: config.backend_host });
+  await agent.fetchRootKey().catch(() => {});
+  const storageClient = new StorageClient(
+    config.bucket_name,
+    config.storage_gateway_url,
+    config.backend_canister_id,
+    config.project_id,
+    agent,
+  );
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const { hash } = await storageClient.putFile(bytes, onProgress);
+  return hash;
+}
 
 function StatusBadge({ status }: { status: string }) {
   const configs: Record<
@@ -53,6 +88,236 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+interface PdfBlockCardProps {
+  blockId: string;
+  title: string;
+  entries: PdfEntry[];
+  onUpload: (blockId: string, file: File) => Promise<void>;
+  onDelete: (entryId: string) => Promise<void>;
+  uploading: boolean;
+  uploadProgress: number;
+  uploadError: string;
+  uploadSuccess: string;
+}
+
+function PdfBlockCard({
+  blockId,
+  title,
+  entries,
+  onUpload,
+  onDelete,
+  uploading,
+  uploadProgress,
+  uploadError,
+  uploadSuccess,
+}: PdfBlockCardProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setSelectedFile(file);
+  };
+
+  const handleUploadClick = async () => {
+    if (!selectedFile) return;
+    await onUpload(blockId, selectedFile);
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDelete = async (entryId: string) => {
+    setDeletingId(entryId);
+    await onDelete(entryId);
+    setDeletingId(null);
+  };
+
+  const blockEntries = entries.filter((e) => e.blockId === blockId);
+
+  return (
+    <div
+      className="rounded-xl p-5 flex flex-col gap-4"
+      style={{
+        background: "oklch(0.13 0.025 248)",
+        border: "1px solid oklch(0.27 0.055 248)",
+      }}
+      data-ocid={`admin.pdf_block.${blockId}.panel`}
+    >
+      <h3
+        className="font-bold text-base"
+        style={{ color: "oklch(0.72 0.13 218)" }}
+      >
+        {title}
+      </h3>
+
+      {/* Upload area */}
+      <div className="flex flex-col gap-3">
+        <label
+          htmlFor={`pdf-upload-${blockId}`}
+          className="text-sm font-medium"
+          style={{ color: "oklch(0.73 0.03 235)" }}
+        >
+          PDF hochladen (nur .pdf)
+        </label>
+        <input
+          ref={fileInputRef}
+          id={`pdf-upload-${blockId}`}
+          type="file"
+          accept=".pdf,application/pdf"
+          onChange={handleFileChange}
+          className="block w-full text-sm rounded-lg px-3 py-2 cursor-pointer"
+          style={{
+            color: "oklch(0.82 0.04 230)",
+            background: "oklch(0.17 0.03 248)",
+            border: "1px solid oklch(0.27 0.055 248)",
+          }}
+          data-ocid={`admin.pdf_block.${blockId}.upload_button`}
+        />
+        {selectedFile && (
+          <p className="text-sm" style={{ color: "oklch(0.73 0.03 235)" }}>
+            Ausgewählt:{" "}
+            <span style={{ color: "oklch(0.82 0.04 230)" }}>
+              {selectedFile.name}
+            </span>
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={handleUploadClick}
+          disabled={!selectedFile || uploading}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all self-start disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background:
+              selectedFile && !uploading
+                ? "oklch(0.72 0.13 218 / 0.18)"
+                : "oklch(0.27 0.055 248 / 0.5)",
+            color:
+              selectedFile && !uploading
+                ? "oklch(0.72 0.13 218)"
+                : "oklch(0.55 0.02 235)",
+            border: "1px solid oklch(0.72 0.13 218 / 0.3)",
+          }}
+          data-ocid={`admin.pdf_block.${blockId}.submit_button`}
+        >
+          {uploading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Upload className="w-4 h-4" />
+          )}
+          {uploading ? `Hochladen… ${uploadProgress}%` : "PDF hochladen"}
+        </button>
+        {uploading && (
+          <div
+            className="w-full rounded-full h-2 overflow-hidden"
+            style={{ background: "oklch(0.27 0.055 248)" }}
+          >
+            <div
+              className="h-2 rounded-full transition-all duration-200"
+              style={{
+                width: `${uploadProgress}%`,
+                background: "oklch(0.72 0.13 218)",
+              }}
+            />
+          </div>
+        )}
+        {uploadError && (
+          <p
+            className="text-sm rounded-lg px-3 py-2"
+            style={{
+              color: "oklch(0.65 0.2 27)",
+              background: "oklch(0.65 0.2 27 / 0.1)",
+              border: "1px solid oklch(0.65 0.2 27 / 0.25)",
+            }}
+            data-ocid={`admin.pdf_block.${blockId}.error_state`}
+          >
+            {uploadError}
+          </p>
+        )}
+        {uploadSuccess && (
+          <p
+            className="text-sm rounded-lg px-3 py-2"
+            style={{
+              color: "oklch(0.55 0.15 145)",
+              background: "oklch(0.55 0.15 145 / 0.1)",
+              border: "1px solid oklch(0.55 0.15 145 / 0.25)",
+            }}
+            data-ocid={`admin.pdf_block.${blockId}.success_state`}
+          >
+            {uploadSuccess}
+          </p>
+        )}
+      </div>
+
+      {/* PDF list */}
+      <div className="flex flex-col gap-2">
+        <p
+          className="text-xs font-medium uppercase tracking-wider"
+          style={{ color: "oklch(0.55 0.02 235)" }}
+        >
+          Hochgeladene PDFs ({blockEntries.length})
+        </p>
+        {blockEntries.length === 0 ? (
+          <p
+            className="text-sm"
+            style={{ color: "oklch(0.55 0.02 235)" }}
+            data-ocid={`admin.pdf_block.${blockId}.empty_state`}
+          >
+            Keine PDFs hochgeladen.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {blockEntries.map((entry, idx) => (
+              <div
+                key={entry.id}
+                className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg"
+                style={{
+                  background: "oklch(0.17 0.03 248)",
+                  border: "1px solid oklch(0.27 0.055 248)",
+                }}
+                data-ocid={`admin.pdf_block.${blockId}.item.${idx + 1}`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText
+                    className="w-4 h-4 flex-shrink-0"
+                    style={{ color: "oklch(0.72 0.13 218)" }}
+                  />
+                  <span
+                    className="text-sm truncate"
+                    style={{ color: "oklch(0.82 0.04 230)" }}
+                    title={entry.filename}
+                  >
+                    {entry.filename}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(entry.id)}
+                  disabled={deletingId === entry.id}
+                  className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all disabled:opacity-50"
+                  style={{
+                    background: "oklch(0.62 0.22 25 / 0.12)",
+                    color: "oklch(0.62 0.22 25)",
+                    border: "1px solid oklch(0.62 0.22 25 / 0.3)",
+                  }}
+                  title="Löschen"
+                  data-ocid={`admin.pdf_block.${blockId}.delete_button.${idx + 1}`}
+                >
+                  {deletingId === entry.id ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [visitorCount, setVisitorCount] = useState<bigint | null>(null);
@@ -71,6 +336,41 @@ export default function AdminPage() {
 
   const [showPayments, setShowPayments] = useState(false);
   const [copiedTx, setCopiedTx] = useState("");
+
+  // PDF management state
+  const [showPdfManagement, setShowPdfManagement] = useState(false);
+  const [pdfEntries, setPdfEntries] = useState<PdfEntry[]>([]);
+  const [loadingPdfs, setLoadingPdfs] = useState(false);
+  // Per-block upload state: blockId -> { uploading, progress, error, success }
+  const [blockUploadState, setBlockUploadState] = useState<
+    Record<
+      string,
+      { uploading: boolean; progress: number; error: string; success: string }
+    >
+  >({});
+
+  const getBlockUploadState = (blockId: string) =>
+    blockUploadState[blockId] ?? {
+      uploading: false,
+      progress: 0,
+      error: "",
+      success: "",
+    };
+
+  const setBlockState = (
+    blockId: string,
+    patch: Partial<{
+      uploading: boolean;
+      progress: number;
+      error: string;
+      success: string;
+    }>,
+  ) => {
+    setBlockUploadState((prev) => ({
+      ...prev,
+      [blockId]: { ...getBlockUploadState(blockId), ...patch },
+    }));
+  };
 
   const loadActiveCount = async () => {
     setActiveLoading(true);
@@ -97,6 +397,20 @@ export default function AdminPage() {
       // silently fail
     } finally {
       setMusterschreibenLoading(false);
+    }
+  };
+
+  const loadPdfEntries = async () => {
+    setLoadingPdfs(true);
+    try {
+      const result = await backend.getAllPdfEntries(ADMIN_PASSWORD);
+      if (result.__kind__ === "ok") {
+        setPdfEntries(result.ok);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingPdfs(false);
     }
   };
 
@@ -210,6 +524,67 @@ export default function AdminPage() {
     }
   };
 
+  const handlePdfUpload = async (blockId: string, file: File) => {
+    setBlockState(blockId, {
+      uploading: true,
+      progress: 0,
+      error: "",
+      success: "",
+    });
+    try {
+      const hash = await uploadPdf(file, (pct) => {
+        setBlockState(blockId, { progress: pct });
+      });
+      const result = await backend.addPdfEntry(
+        ADMIN_PASSWORD,
+        blockId,
+        file.name,
+        hash,
+      );
+      if (result.__kind__ === "ok") {
+        setBlockState(blockId, {
+          uploading: false,
+          progress: 100,
+          success: `"${file.name}" wurde erfolgreich hochgeladen.`,
+        });
+        await loadPdfEntries();
+        setTimeout(
+          () => setBlockState(blockId, { success: "", progress: 0 }),
+          4000,
+        );
+      } else {
+        setBlockState(blockId, {
+          uploading: false,
+          error: result.error ?? "Fehler beim Speichern.",
+        });
+      }
+    } catch (err) {
+      setBlockState(blockId, {
+        uploading: false,
+        error: `Upload fehlgeschlagen: ${err instanceof Error ? err.message : "Unbekannter Fehler"}`,
+      });
+    }
+  };
+
+  const handlePdfDelete = async (entryId: string) => {
+    try {
+      const result = await backend.deletePdfEntry(ADMIN_PASSWORD, entryId);
+      if (result.__kind__ === "ok") {
+        await loadPdfEntries();
+      }
+    } catch {
+      // silently fail
+    }
+  };
+
+  const handleTogglePdfManagement = () => {
+    const next = !showPdfManagement;
+    setShowPdfManagement(next);
+    if (next && pdfEntries.length === 0) {
+      loadPdfEntries();
+    }
+  };
+
   const sortedPaymentRequests = [...paymentRequests].sort(
     (a, b) => Number(b.submittedAt) - Number(a.submittedAt),
   );
@@ -223,6 +598,7 @@ export default function AdminPage() {
       className="min-h-screen px-6 py-12"
       style={{ background: "oklch(0.135 0.025 248)" }}
     >
+      {/* Header + stats cards – constrained width */}
       <div className="w-full max-w-3xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -263,16 +639,16 @@ export default function AdminPage() {
               onClick={() => {
                 window.location.href = "/";
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-base font-semibold transition-all"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-lg font-semibold transition-all"
               style={{
                 background: "oklch(0.55 0.22 25 / 0.15)",
                 color: "oklch(0.75 0.22 25)",
                 border: "1px solid oklch(0.62 0.22 25 / 0.4)",
               }}
+              title="Abmelden"
               data-ocid="admin.logout.button"
             >
               <LogOut className="w-4 h-4" />
-              Abmelden
             </button>
           </div>
 
@@ -444,254 +820,357 @@ export default function AdminPage() {
                 </button>
               </div>
             </div>
-
-            {/* Payment requests */}
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{
-                background: "oklch(0.17 0.03 248)",
-                border: "1px solid oklch(0.27 0.055 248)",
-              }}
-              data-ocid="admin.payments.panel"
-            >
-              <button
-                type="button"
-                onClick={() => setShowPayments((prev) => !prev)}
-                className="w-full flex items-center justify-between px-8 py-5 transition-all"
-                style={{
-                  background: "oklch(0.17 0.03 248)",
-                  color: "oklch(0.96 0.015 230)",
-                }}
-                data-ocid="admin.payments.toggle"
-              >
-                <span className="font-bold text-xl">Zahlungseingänge</span>
-                {showPayments ? (
-                  <ChevronUp
-                    className="w-5 h-5"
-                    style={{ color: "oklch(0.72 0.13 218)" }}
-                  />
-                ) : (
-                  <ChevronDown
-                    className="w-5 h-5"
-                    style={{ color: "oklch(0.72 0.13 218)" }}
-                  />
-                )}
-              </button>
-              {showPayments && (
-                <div className="px-8 pb-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <p
-                      className="text-base"
-                      style={{ color: "oklch(0.73 0.03 235)" }}
-                    >
-                      Eingegangene Ausgleiche prüfen und Musterschreiben
-                      freischalten
-                    </p>
-                    <button
-                      type="button"
-                      onClick={loadPaymentRequests}
-                      className="px-4 py-2 rounded-lg text-base font-medium transition-all"
-                      style={{
-                        color: "oklch(0.72 0.13 218)",
-                        border: "1px solid oklch(0.72 0.13 218 / 0.35)",
-                      }}
-                      data-ocid="admin.refresh_payments.button"
-                    >
-                      Aktualisieren
-                    </button>
-                  </div>
-
-                  {paymentMsg && (
-                    <p
-                      className="mb-4 text-base py-2 px-3 rounded-lg"
-                      style={{
-                        color: "oklch(0.55 0.15 145)",
-                        background: "oklch(0.55 0.15 145 / 0.1)",
-                        border: "1px solid oklch(0.55 0.15 145 / 0.2)",
-                      }}
-                      data-ocid="admin.payment_action.success_state"
-                    >
-                      {paymentMsg}
-                    </p>
-                  )}
-                  {paymentError && (
-                    <p
-                      className="mb-4 text-base py-2 px-3 rounded-lg"
-                      style={{
-                        color: "oklch(0.65 0.2 27)",
-                        background: "oklch(0.65 0.2 27 / 0.1)",
-                        border: "1px solid oklch(0.65 0.2 27 / 0.2)",
-                      }}
-                      data-ocid="admin.payment_action.error_state"
-                    >
-                      {paymentError}
-                    </p>
-                  )}
-
-                  {loadingPayments ? (
-                    <div
-                      className="flex items-center justify-center py-8"
-                      data-ocid="admin.payments.loading_state"
-                    >
-                      <Loader2
-                        className="w-6 h-6 animate-spin"
-                        style={{ color: "oklch(0.72 0.13 218)" }}
-                      />
-                    </div>
-                  ) : sortedPaymentRequests.length === 0 ? (
-                    <div
-                      className="text-center py-8"
-                      data-ocid="admin.payments.empty_state"
-                    >
-                      <p
-                        className="text-base"
-                        style={{ color: "oklch(0.73 0.03 235)" }}
-                      >
-                        Keine Ausgleich-Bestätigungen vorhanden.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {sortedPaymentRequests.map((req, i) => (
-                        <div
-                          key={`${req.nickname}-${i}`}
-                          className="p-5 rounded-xl"
-                          style={{
-                            background: "oklch(0.13 0.025 248)",
-                            border: "1px solid oklch(0.27 0.055 248)",
-                          }}
-                          data-ocid={`admin.payment.item.${i + 1}` as string}
-                        >
-                          <div className="flex items-start justify-between gap-4 flex-wrap">
-                            <div className="space-y-1">
-                              <p
-                                className="font-bold text-base"
-                                style={{ color: "oklch(0.96 0.015 230)" }}
-                              >
-                                {req.nickname}
-                              </p>
-                              <p
-                                className="text-sm"
-                                style={{ color: "oklch(0.73 0.03 235)" }}
-                              >
-                                Kryptowährung: <strong>{req.currency}</strong>
-                              </p>
-                              <div className="flex items-start gap-2 flex-wrap">
-                                <code
-                                  className="text-sm font-mono break-all flex-1"
-                                  style={{ color: "oklch(0.73 0.03 235)" }}
-                                >
-                                  TX-ID: {req.txHash}
-                                </code>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(req.txHash);
-                                    setCopiedTx(`${req.nickname}-${i}`);
-                                    setTimeout(() => setCopiedTx(""), 2000);
-                                  }}
-                                  className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all"
-                                  style={{
-                                    background:
-                                      copiedTx === `${req.nickname}-${i}`
-                                        ? "oklch(0.55 0.15 145 / 0.15)"
-                                        : "oklch(0.72 0.13 218 / 0.1)",
-                                    color:
-                                      copiedTx === `${req.nickname}-${i}`
-                                        ? "oklch(0.55 0.15 145)"
-                                        : "oklch(0.72 0.13 218)",
-                                    border:
-                                      "1px solid oklch(0.72 0.13 218 / 0.2)",
-                                  }}
-                                  data-ocid={
-                                    `admin.copy_tx.button.${i + 1}` as string
-                                  }
-                                >
-                                  <Copy className="w-3 h-3" />
-                                  {copiedTx === `${req.nickname}-${i}`
-                                    ? "Kopiert ✓"
-                                    : "Kopieren"}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleGrantAccess(req.nickname)
-                                  }
-                                  className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
-                                  style={{
-                                    background: "oklch(0.50 0.15 145 / 0.15)",
-                                    color: "oklch(0.50 0.15 145)",
-                                    border:
-                                      "1px solid oklch(0.50 0.15 145 / 0.3)",
-                                  }}
-                                  data-ocid={
-                                    `admin.grant_access.button.${i + 1}` as string
-                                  }
-                                >
-                                  <CheckCircle className="w-3 h-3" />{" "}
-                                  Musterschreiben freischalten
-                                </button>
-                              </div>
-                              <p
-                                className="text-sm"
-                                style={{ color: "oklch(0.55 0.02 235)" }}
-                              >
-                                {new Date(
-                                  Number(req.submittedAt) / 1_000_000,
-                                ).toLocaleString("de-DE")}
-                              </p>
-                              <StatusBadge status={req.status} />
-                            </div>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {req.status === "pending" && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleApprove(req.nickname)}
-                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
-                                    style={{
-                                      background: "oklch(0.55 0.15 145 / 0.15)",
-                                      color: "oklch(0.55 0.15 145)",
-                                      border:
-                                        "1px solid oklch(0.55 0.15 145 / 0.3)",
-                                    }}
-                                    data-ocid={
-                                      `admin.approve_button.${i + 1}` as string
-                                    }
-                                  >
-                                    <CheckCircle className="w-4 h-4" />{" "}
-                                    Genehmigen
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleReject(req.nickname)}
-                                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
-                                    style={{
-                                      background: "oklch(0.62 0.22 25 / 0.12)",
-                                      color: "oklch(0.62 0.22 25)",
-                                      border:
-                                        "1px solid oklch(0.62 0.22 25 / 0.3)",
-                                    }}
-                                    data-ocid={
-                                      `admin.reject_button.${i + 1}` as string
-                                    }
-                                  >
-                                    <XCircle className="w-4 h-4" /> Ablehnen
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </motion.div>
         </motion.div>
       </div>
+
+      {/* Payment requests – full width */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="w-full"
+      >
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "oklch(0.17 0.03 248)",
+            border: "1px solid oklch(0.27 0.055 248)",
+          }}
+          data-ocid="admin.payments.panel"
+        >
+          <button
+            type="button"
+            onClick={() => setShowPayments((prev) => !prev)}
+            className="w-full flex items-center justify-center px-8 py-5 transition-all"
+            style={{
+              background: "oklch(0.17 0.03 248)",
+              color: "oklch(0.96 0.015 230)",
+            }}
+            data-ocid="admin.payments.toggle"
+          >
+            <span className="font-bold" style={{ fontSize: "1.625rem" }}>
+              Zahlungseingänge
+            </span>
+            {showPayments ? (
+              <ChevronUp
+                className="w-5 h-5 ml-2"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              />
+            ) : (
+              <ChevronDown
+                className="w-5 h-5 ml-2"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              />
+            )}
+          </button>
+          {showPayments && (
+            <div className="px-8 pb-8">
+              <div className="flex items-center justify-between mb-6">
+                <p
+                  className="text-base"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Eingegangene Ausgleiche prüfen und Musterschreiben
+                  freischalten
+                </p>
+                <button
+                  type="button"
+                  onClick={loadPaymentRequests}
+                  className="px-4 py-2 rounded-lg text-base font-medium transition-all"
+                  style={{
+                    color: "oklch(0.72 0.13 218)",
+                    border: "1px solid oklch(0.72 0.13 218 / 0.35)",
+                  }}
+                  data-ocid="admin.refresh_payments.button"
+                >
+                  Aktualisieren
+                </button>
+              </div>
+
+              {paymentMsg && (
+                <p
+                  className="mb-4 text-base py-2 px-3 rounded-lg"
+                  style={{
+                    color: "oklch(0.55 0.15 145)",
+                    background: "oklch(0.55 0.15 145 / 0.1)",
+                    border: "1px solid oklch(0.55 0.15 145 / 0.2)",
+                  }}
+                  data-ocid="admin.payment_action.success_state"
+                >
+                  {paymentMsg}
+                </p>
+              )}
+              {paymentError && (
+                <p
+                  className="mb-4 text-base py-2 px-3 rounded-lg"
+                  style={{
+                    color: "oklch(0.65 0.2 27)",
+                    background: "oklch(0.65 0.2 27 / 0.1)",
+                    border: "1px solid oklch(0.65 0.2 27 / 0.2)",
+                  }}
+                  data-ocid="admin.payment_action.error_state"
+                >
+                  {paymentError}
+                </p>
+              )}
+
+              {loadingPayments ? (
+                <div
+                  className="flex items-center justify-center py-8"
+                  data-ocid="admin.payments.loading_state"
+                >
+                  <Loader2
+                    className="w-6 h-6 animate-spin"
+                    style={{ color: "oklch(0.72 0.13 218)" }}
+                  />
+                </div>
+              ) : sortedPaymentRequests.length === 0 ? (
+                <div
+                  className="text-center py-8"
+                  data-ocid="admin.payments.empty_state"
+                >
+                  <p
+                    className="text-base"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Keine Ausgleich-Bestätigungen vorhanden.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {sortedPaymentRequests.map((req, i) => (
+                    <div
+                      key={`${req.nickname}-${i}`}
+                      className="p-5 rounded-xl"
+                      style={{
+                        background: "oklch(0.13 0.025 248)",
+                        border: "1px solid oklch(0.27 0.055 248)",
+                      }}
+                      data-ocid={`admin.payment.item.${i + 1}` as string}
+                    >
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <p
+                            className="font-bold text-base"
+                            style={{ color: "oklch(0.96 0.015 230)" }}
+                          >
+                            {req.nickname}
+                          </p>
+                          <p
+                            className="text-sm"
+                            style={{ color: "oklch(0.73 0.03 235)" }}
+                          >
+                            Kryptowährung: <strong>{req.currency}</strong>
+                          </p>
+                          <div className="flex items-start gap-2 flex-wrap">
+                            <code
+                              className="text-sm font-mono break-all flex-1"
+                              style={{ color: "oklch(0.73 0.03 235)" }}
+                            >
+                              TX-ID: {req.txHash}
+                            </code>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(req.txHash);
+                                setCopiedTx(`${req.nickname}-${i}`);
+                                setTimeout(() => setCopiedTx(""), 2000);
+                              }}
+                              className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all"
+                              style={{
+                                background:
+                                  copiedTx === `${req.nickname}-${i}`
+                                    ? "oklch(0.55 0.15 145 / 0.15)"
+                                    : "oklch(0.72 0.13 218 / 0.1)",
+                                color:
+                                  copiedTx === `${req.nickname}-${i}`
+                                    ? "oklch(0.55 0.15 145)"
+                                    : "oklch(0.72 0.13 218)",
+                                border: "1px solid oklch(0.72 0.13 218 / 0.2)",
+                              }}
+                              data-ocid={
+                                `admin.copy_tx.button.${i + 1}` as string
+                              }
+                            >
+                              <Copy className="w-3 h-3" />
+                              {copiedTx === `${req.nickname}-${i}`
+                                ? "Kopiert ✓"
+                                : "Kopieren"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleGrantAccess(req.nickname)}
+                              className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
+                              style={{
+                                background: "oklch(0.50 0.15 145 / 0.15)",
+                                color: "oklch(0.50 0.15 145)",
+                                border: "1px solid oklch(0.50 0.15 145 / 0.3)",
+                              }}
+                              data-ocid={
+                                `admin.grant_access.button.${i + 1}` as string
+                              }
+                            >
+                              <CheckCircle className="w-3 h-3" />{" "}
+                              Musterschreiben freischalten
+                            </button>
+                          </div>
+                          <p
+                            className="text-sm"
+                            style={{ color: "oklch(0.55 0.02 235)" }}
+                          >
+                            {new Date(
+                              Number(req.submittedAt) / 1_000_000,
+                            ).toLocaleString("de-DE")}
+                          </p>
+                          <StatusBadge status={req.status} />
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {req.status === "pending" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleApprove(req.nickname)}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                style={{
+                                  background: "oklch(0.55 0.15 145 / 0.15)",
+                                  color: "oklch(0.55 0.15 145)",
+                                  border:
+                                    "1px solid oklch(0.55 0.15 145 / 0.3)",
+                                }}
+                                data-ocid={
+                                  `admin.approve_button.${i + 1}` as string
+                                }
+                              >
+                                <CheckCircle className="w-4 h-4" /> Genehmigen
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleReject(req.nickname)}
+                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                style={{
+                                  background: "oklch(0.62 0.22 25 / 0.12)",
+                                  color: "oklch(0.62 0.22 25)",
+                                  border: "1px solid oklch(0.62 0.22 25 / 0.3)",
+                                }}
+                                data-ocid={
+                                  `admin.reject_button.${i + 1}` as string
+                                }
+                              >
+                                <XCircle className="w-4 h-4" /> Ablehnen
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* PDF Management – full width, below Zahlungseingänge */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+        className="w-full mt-6"
+      >
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{
+            background: "oklch(0.17 0.03 248)",
+            border: "1px solid oklch(0.27 0.055 248)",
+          }}
+          data-ocid="admin.pdf_management.panel"
+        >
+          <button
+            type="button"
+            onClick={handleTogglePdfManagement}
+            className="w-full flex items-center justify-center gap-2 px-8 py-5 transition-all"
+            style={{
+              background: "oklch(0.17 0.03 248)",
+              color: "oklch(0.96 0.015 230)",
+            }}
+            data-ocid="admin.pdf_management.toggle"
+          >
+            <span className="font-bold" style={{ fontSize: "1.625rem" }}>
+              Verwaltung der eingestellten PDF&apos;s
+            </span>
+            {showPdfManagement ? (
+              <ChevronUp
+                className="w-5 h-5"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              />
+            ) : (
+              <ChevronDown
+                className="w-5 h-5"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              />
+            )}
+          </button>
+
+          {showPdfManagement && (
+            <div className="px-8 pb-8">
+              <div className="flex items-center justify-between mb-6">
+                <p
+                  className="text-base"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  PDFs für die vier Musterschreiben-Blöcke verwalten
+                </p>
+                <button
+                  type="button"
+                  onClick={loadPdfEntries}
+                  className="px-4 py-2 rounded-lg text-base font-medium transition-all"
+                  style={{
+                    color: "oklch(0.72 0.13 218)",
+                    border: "1px solid oklch(0.72 0.13 218 / 0.35)",
+                  }}
+                  data-ocid="admin.pdf_management.button"
+                >
+                  Aktualisieren
+                </button>
+              </div>
+
+              {loadingPdfs ? (
+                <div
+                  className="flex items-center justify-center py-10"
+                  data-ocid="admin.pdf_management.loading_state"
+                >
+                  <Loader2
+                    className="w-6 h-6 animate-spin"
+                    style={{ color: "oklch(0.72 0.13 218)" }}
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {PDF_BLOCKS.map((block) => {
+                    const bs = getBlockUploadState(block.id);
+                    return (
+                      <PdfBlockCard
+                        key={block.id}
+                        blockId={block.id}
+                        title={block.title}
+                        entries={pdfEntries}
+                        onUpload={handlePdfUpload}
+                        onDelete={handlePdfDelete}
+                        uploading={bs.uploading}
+                        uploadProgress={bs.progress}
+                        uploadError={bs.error}
+                        uploadSuccess={bs.success}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }

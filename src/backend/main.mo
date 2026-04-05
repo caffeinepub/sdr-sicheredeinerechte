@@ -31,6 +31,16 @@ actor {
   stable let paymentRequests = Map.empty<Text, PaymentRequest>();
   stable let musterschreibenAccess = Map.empty<Text, Bool>();
 
+  // Allowed users (frontend-only login, no backend registration needed)
+  let allowedUsers : [Text] = ["wotan", "Michael"];
+
+  func isAllowedUser(nickname : Text) : Bool {
+    for (u in allowedUsers.vals()) {
+      if (u == nickname) return true;
+    };
+    users.containsKey(nickname);
+  };
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile { userProfiles.get(caller) };
   public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile { userProfiles.get(user) };
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () { userProfiles.add(caller, profile) };
@@ -104,8 +114,10 @@ actor {
 
   public query func getCryptoAddresses() : async [CryptoAddress] { cryptoAddresses.values().toArray() };
 
+  // submitPaymentProof: accepts any nickname that is either in the allowed list or registered
+  // No "User not found" error for hardcoded frontend-only users
   public shared ({ caller }) func submitPaymentProof(nickname : Text, currency : Text, txHash : Text) : async { #ok; #error : Text } {
-    if (not users.containsKey(nickname)) return #error("User not found");
+    if (not isAllowedUser(nickname)) return #error("User not found");
     switch (musterschreibenAccess.get(nickname)) {
       case (?true) { return #error("Already has access") };
       case (_) {};

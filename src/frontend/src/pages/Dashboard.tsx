@@ -144,7 +144,7 @@ export default function Dashboard() {
               <span style={{ color: "oklch(0.72 0.13 218)" }}>{nickname}</span>!
             </h1>
             <p className="text-base" style={{ color: "oklch(0.73 0.03 235)" }}>
-              Ihr persönlicher Bereich bei SichereDeineRechte.
+              Ihr privater Bereich bei SichereDeineRechte.
             </p>
           </div>
 
@@ -299,8 +299,8 @@ export default function Dashboard() {
             <div>
               {/* Heading in blue */}
               <h2
-                className="font-bold text-2xl mb-4"
-                style={{ color: "oklch(0.72 0.13 218)" }}
+                className="font-bold mb-4"
+                style={{ color: "oklch(0.72 0.13 218)", fontSize: "1.95rem" }}
               >
                 Ihr Zugang zu professionellen Vorlagen
               </h2>
@@ -330,7 +330,7 @@ export default function Dashboard() {
                 >
                   Für den Zugang zu diesen Musterschreiben und Erklärungen
                   erheben wir einen einmaligen Energieausgleich in Höhe von
-                  120,00 EURO [sic]. Dieser Betrag ist in einer von uns
+                  199,00 EURO [sic]. Dieser Betrag ist in einer von uns
                   akzeptierten Kryptowährung zum jeweiligen Marktwert zum
                   Zeitpunkt des Ausgleichs zu leisten.
                 </p>

@@ -1,28 +1,23 @@
 # SDR SichereDeineRechte
 
 ## Current State
-- ZahlungPage ("Musterschreiben freischalten") zeigt ein Formular mit Kryptowährungsauswahl und TX-ID-Eingabe, aber keinen automatisch befüllten Nickname.
-- AdminPage zeigt Zahlungsbestätigungen direkt sichtbar (nicht hinter einem Button), neueste zuletzt (aufsteigend sortiert).
-- TX-ID im Admin-Bereich hat keinen Kopierbutton.
+Der Admin-Bereich zeigt drei Statistik-Karten und darunter Klappfelder.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Auf der ZahlungPage: Über dem TX-ID-Feld ein schreibgeschütztes Feld mit Label "Ihr Nickname", das automatisch mit dem eingeloggten Nickname befüllt ist.
-- Im AdminPage: Alle Zahlungseingänge hinter einem Toggle-Button "Zahlungseingänge" verstecken.
-- Im AdminPage: Hinter jeder TX-ID einen Kopierbutton.
-- Im AdminPage: Hinter dem Kopierbutton jeweils einen Button "Musterschreiben freischalten" (entspricht dem bestehenden grantMusterschreibenAccess).
+- Krypto-zu-Euro-Rechner direkt unter den Stats-Karten.
+- Dropdown (BTC/ETH/ICP/XRP/SOL), Coin-Anzahl, Datum+Zeit-Picker, Euro-Ausgabefeld, Button.
+- Live-Berechnung via CoinGecko historische Preise.
 
 ### Modify
-- AdminPage: Zahlungseingänge sortieren von neu nach alt (neueste oben) – aktuell ist es aufsteigend (älteste oben).
-- AdminPage: Die Zahlungsbestätigungen sind nicht mehr direkt sichtbar, sondern klappen sich beim Klick auf "Zahlungseingänge" auf/zu.
+- AdminPage.tsx: Rechner nach Stats-Karten einbauen.
 
 ### Remove
-- Nichts entfernen.
+- Nichts.
 
 ## Implementation Plan
-1. ZahlungPage: Readonly-Eingabefeld "Ihr Nickname" über dem TX-ID-Feld einfügen, Wert aus `nickname` state.
-2. AdminPage: State für `showPayments` (boolean) hinzufügen; Zahlungseingänge-Sektion hinter Button "Zahlungseingänge" verstecken.
-3. AdminPage: Sortierung von `sortedPaymentRequests` umkehren (neueste zuerst: absteigende submittedAt-Sortierung).
-4. AdminPage: In jeder Zahlungszeile hinter der TX-ID einen Copy-Button einfügen.
-5. AdminPage: Den bestehenden "Musterschreiben freischalten"-Button direkt neben dem Copy-Button platzieren (statt in einem separaten Button-Container).
+1. State fuer Currency, Betrag, Timestamp, Ergebnis, Loading, Error.
+2. CoinGecko API: /coins/{id}/history?date=DD-MM-YYYY.
+3. Live + Button Berechnung.
+4. Passend zum deep-navy Theme.

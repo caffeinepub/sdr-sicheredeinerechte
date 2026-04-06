@@ -1173,8 +1173,8 @@ export default function AdminPage() {
       setCoinAmount(txDetailResult.amount);
       // Convert "YYYY-MM-DD HH:MM" to datetime-local format "YYYY-MM-DDTHH:MM"
       if (txDetailResult.timestamp) {
-        const formatted = txDetailResult.timestamp.replace(" ", "T");
-        setCalcTimestamp(formatted);
+        // Keep as "YYYY-MM-DD HH:MM" text format (text input supports paste & typing)
+        setCalcTimestamp(txDetailResult.timestamp);
       }
     }
   }, [txDetailResult]);
@@ -1399,7 +1399,7 @@ export default function AdminPage() {
         </motion.div>
       </div>
 
-      {/* Krypto-zu-Euro-Rechner */}
+      {/* Krypto-zu-Euro-Rechner & Transaktions-Details abfragen – combined */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1409,15 +1409,20 @@ export default function AdminPage() {
         {/* Collapsible header */}
         <button
           type="button"
-          onClick={() => setShowCryptoCalculator((v) => !v)}
+          onClick={() => {
+            const next = !(showCryptoCalculator || showTxDetails);
+            setShowCryptoCalculator(next);
+            setShowTxDetails(next);
+          }}
           className="w-full flex items-center justify-center px-5 py-4 transition-all relative"
           style={{
             background: "oklch(0.17 0.03 248)",
             border: "1px solid oklch(0.27 0.055 248)",
-            borderRadius: showCryptoCalculator ? "1rem 1rem 0 0" : "1rem",
+            borderRadius:
+              showCryptoCalculator || showTxDetails ? "1rem 1rem 0 0" : "1rem",
             cursor: "pointer",
           }}
-          data-ocid="calc.toggle"
+          data-ocid="combined.toggle"
         >
           <div className="flex items-center gap-3">
             <div
@@ -1436,11 +1441,11 @@ export default function AdminPage() {
               className="font-bold text-lg"
               style={{ color: "oklch(0.96 0.015 230)" }}
             >
-              Krypto-zu-Euro-Rechner
+              Krypto-zu-Euro-Rechner &amp; Transaktions-Details abfragen
             </h2>
           </div>
           <div className="absolute right-5 top-1/2 -translate-y-1/2">
-            {showCryptoCalculator ? (
+            {showCryptoCalculator || showTxDetails ? (
               <ChevronUp
                 className="w-5 h-5"
                 style={{ color: "oklch(0.72 0.13 218)" }}
@@ -1454,10 +1459,9 @@ export default function AdminPage() {
           </div>
         </button>
 
-        {/* Tool content */}
-        {showCryptoCalculator && (
+        {/* Combined tool content */}
+        {(showCryptoCalculator || showTxDetails) && (
           <div
-            className="p-6"
             style={{
               background: "oklch(0.17 0.03 248)",
               border: "1px solid oklch(0.27 0.055 248)",
@@ -1465,392 +1469,420 @@ export default function AdminPage() {
               borderRadius: "0 0 1rem 1rem",
             }}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              {/* Currency dropdown */}
-              <div>
-                <label
-                  htmlFor="calc-currency"
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Kryptowährung
-                </label>
-                <select
-                  id="calc-currency"
-                  value={cryptoCurrency}
-                  onChange={(e) => setCryptoCurrency(e.target.value)}
-                  data-ocid="calc.select"
-                  className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
-                  style={{
-                    background: "oklch(0.13 0.025 248)",
-                    border: "1px solid oklch(0.32 0.06 248)",
-                    color: "oklch(0.96 0.015 230)",
-                  }}
-                >
-                  <option value="BTC">BTC – Bitcoin</option>
-                  <option value="ETH">ETH – Ethereum</option>
-                  <option value="ICP">ICP – Internet Computer</option>
-                  <option value="XRP">XRP – Ripple</option>
-                  <option value="SOL">SOL – Solana</option>
-                </select>
-              </div>
+            {/* ── Transaktions-Details abfragen ── */}
+            <div
+              className="p-6 border-b"
+              style={{ borderColor: "oklch(0.27 0.055 248)" }}
+            >
+              <h3
+                className="font-semibold text-base mb-4 flex items-center gap-2"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              >
+                <Search className="w-4 h-4" />
+                Transaktions-Details abfragen
+              </h3>
 
-              {/* Coin amount */}
-              <div>
-                <label
-                  htmlFor="calc-amount"
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Anzahl der Coins
-                </label>
-                <input
-                  id="calc-amount"
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={coinAmount}
-                  onChange={(e) => setCoinAmount(e.target.value)}
-                  placeholder="z.B. 1.5"
-                  data-ocid="calc.input"
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
-                  style={{
-                    background: "oklch(0.13 0.025 248)",
-                    border: "1px solid oklch(0.32 0.06 248)",
-                    color: "oklch(0.96 0.015 230)",
-                  }}
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                {/* Currency dropdown */}
+                <div>
+                  <label
+                    htmlFor="txd-currency"
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Blockchain-Kürzel
+                  </label>
+                  <select
+                    id="txd-currency"
+                    value={txDetailCurrency}
+                    onChange={(e) => setTxDetailCurrency(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      border: "1px solid oklch(0.32 0.06 248)",
+                      color: "oklch(0.96 0.015 230)",
+                    }}
+                  >
+                    <option value="ICP">ICP – Internet Computer</option>
+                    <option value="BTC">BTC – Bitcoin</option>
+                    <option value="ETH">ETH – Ethereum</option>
+                    <option value="XRP">XRP – Ripple</option>
+                    <option value="SOL">SOL – Solana</option>
+                  </select>
+                </div>
 
-              {/* Timestamp */}
-              <div>
-                <label
-                  htmlFor="calc-timestamp"
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Zeitstempel
-                </label>
-                <input
-                  id="calc-timestamp"
-                  type="datetime-local"
-                  value={calcTimestamp}
-                  onChange={(e) => setCalcTimestamp(e.target.value)}
-                  data-ocid="calc.timestamp.input"
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
-                  style={{
-                    background: "oklch(0.13 0.025 248)",
-                    border: "1px solid oklch(0.32 0.06 248)",
-                    color: "oklch(0.96 0.015 230)",
-                    colorScheme: "dark",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Result + Button row */}
-            <div className="flex flex-col sm:flex-row gap-4 items-end">
-              {/* Euro result */}
-              <div className="flex-1">
-                <p
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Euro-Betrag (historisch)
-                </p>
-                <div
-                  data-ocid="calc.success_state"
-                  className="w-full px-3 py-2.5 rounded-xl text-sm font-bold min-h-[42px] flex items-center"
-                  style={{
-                    background: "oklch(0.13 0.025 248)",
-                    border: "1px solid oklch(0.32 0.06 248)",
-                    color: calcLoading
-                      ? "oklch(0.72 0.13 218)"
-                      : euroResult !== null
-                        ? "oklch(0.55 0.15 145)"
-                        : "oklch(0.55 0.03 235)",
-                  }}
-                >
-                  {calcLoading ? (
-                    <span
-                      className="flex items-center gap-2"
-                      data-ocid="calc.loading_state"
-                    >
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Berechne…
-                    </span>
-                  ) : calcError ? (
-                    <span
-                      data-ocid="calc.error_state"
-                      style={{
-                        color: "oklch(0.62 0.22 25)",
-                        fontWeight: 400,
-                        fontSize: "0.8rem",
-                      }}
-                    >
-                      {calcError}
-                    </span>
-                  ) : euroResult !== null ? (
-                    `${euroResult.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
-                  ) : (
-                    <span style={{ color: "oklch(0.45 0.03 235)" }}>
-                      – Bitte alle Felder ausfüllen
-                    </span>
-                  )}
+                {/* TX Hash */}
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="txd-hash"
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Transaction-Hash
+                  </label>
+                  <input
+                    id="txd-hash"
+                    type="text"
+                    value={txDetailHash}
+                    onChange={(e) => setTxDetailHash(e.target.value)}
+                    placeholder="Vollständigen TX-Hash eingeben…"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all font-mono"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      border: "1px solid oklch(0.32 0.06 248)",
+                      color: "oklch(0.96 0.015 230)",
+                    }}
+                  />
                 </div>
               </div>
 
-              {/* Calculate button */}
+              {/* Result fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Zeitstempel (UTC)
+                  </p>
+                  <div
+                    className="w-full px-3 py-2.5 rounded-xl text-sm min-h-[42px] flex items-center"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      border: "1px solid oklch(0.32 0.06 248)",
+                      color: txDetailLoading
+                        ? "oklch(0.72 0.13 218)"
+                        : txDetailResult &&
+                            !("error" in txDetailResult) &&
+                            txDetailResult.timestamp
+                          ? "oklch(0.55 0.15 145)"
+                          : "oklch(0.45 0.03 235)",
+                    }}
+                  >
+                    {txDetailLoading ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Abrufen…
+                      </span>
+                    ) : txDetailResult && !("error" in txDetailResult) ? (
+                      txDetailResult.timestamp || "–"
+                    ) : (
+                      <span style={{ color: "oklch(0.45 0.03 235)" }}>
+                        – wird angezeigt
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <p
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Anzahl der Coins
+                  </p>
+                  <div
+                    className="w-full px-3 py-2.5 rounded-xl text-sm font-bold min-h-[42px] flex items-center"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      border: "1px solid oklch(0.32 0.06 248)",
+                      color: txDetailLoading
+                        ? "oklch(0.72 0.13 218)"
+                        : txDetailResult &&
+                            !("error" in txDetailResult) &&
+                            txDetailResult.amount
+                          ? "oklch(0.55 0.15 145)"
+                          : "oklch(0.45 0.03 235)",
+                    }}
+                  >
+                    {txDetailLoading ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Abrufen…
+                      </span>
+                    ) : txDetailResult && !("error" in txDetailResult) ? (
+                      `${txDetailResult.amount} ${txDetailResult.currency}`
+                    ) : (
+                      <span style={{ color: "oklch(0.45 0.03 235)" }}>
+                        – wird angezeigt
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {txDetailResult && "error" in txDetailResult && (
+                <div
+                  className="mb-4 px-3 py-2.5 rounded-xl text-sm"
+                  style={{
+                    background: "oklch(0.62 0.22 25 / 0.1)",
+                    border: "1px solid oklch(0.62 0.22 25 / 0.3)",
+                    color: "oklch(0.62 0.22 25)",
+                  }}
+                >
+                  {txDetailResult.error}
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={() =>
-                  fetchHistoricalEuroPrice(
-                    cryptoCurrency,
-                    coinAmount,
-                    calcTimestamp,
-                  )
-                }
-                disabled={calcLoading || !coinAmount || !calcTimestamp}
-                data-ocid="calc.primary_button"
-                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                onClick={() => fetchTxDetails(txDetailCurrency, txDetailHash)}
+                disabled={txDetailLoading || !txDetailHash.trim()}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
                   background: "oklch(0.72 0.13 218 / 0.15)",
                   color: "oklch(0.72 0.13 218)",
                   border: "1px solid oklch(0.72 0.13 218 / 0.4)",
                 }}
               >
-                Jetzt berechnen
+                Transaktion abfragen
               </button>
             </div>
-          </div>
-        )}
-      </motion.div>
 
-      {/* Transaktions-Details abfragen */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.07 }}
-        className="w-full mb-6"
-      >
-        {/* Collapsible header */}
-        <button
-          type="button"
-          onClick={() => setShowTxDetails((v) => !v)}
-          className="w-full flex items-center justify-center px-5 py-4 transition-all relative"
-          style={{
-            background: "oklch(0.17 0.03 248)",
-            border: "1px solid oklch(0.27 0.055 248)",
-            borderRadius: showTxDetails ? "1rem 1rem 0 0" : "1rem",
-            cursor: "pointer",
-          }}
-          data-ocid="txdetails.toggle"
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{
-                background: "oklch(0.72 0.13 218 / 0.15)",
-                border: "1px solid oklch(0.72 0.13 218 / 0.3)",
-              }}
-            >
-              <Search
-                className="w-4 h-4"
+            {/* ── Krypto-zu-Euro-Rechner ── */}
+            <div className="p-6">
+              <h3
+                className="font-semibold text-base mb-4 flex items-center gap-2"
                 style={{ color: "oklch(0.72 0.13 218)" }}
-              />
-            </div>
-            <h2
-              className="font-bold text-lg"
-              style={{ color: "oklch(0.96 0.015 230)" }}
-            >
-              Transaktions-Details abfragen
-            </h2>
-          </div>
-          <div className="absolute right-5 top-1/2 -translate-y-1/2">
-            {showTxDetails ? (
-              <ChevronUp
-                className="w-5 h-5"
-                style={{ color: "oklch(0.72 0.13 218)" }}
-              />
-            ) : (
-              <ChevronDown
-                className="w-5 h-5"
-                style={{ color: "oklch(0.72 0.13 218)" }}
-              />
-            )}
-          </div>
-        </button>
+              >
+                <Calculator className="w-4 h-4" />
+                Krypto-zu-Euro-Rechner
+              </h3>
 
-        {/* Tool content */}
-        {showTxDetails && (
-          <div
-            className="p-6"
-            style={{
-              background: "oklch(0.17 0.03 248)",
-              border: "1px solid oklch(0.27 0.055 248)",
-              borderTop: "none",
-              borderRadius: "0 0 1rem 1rem",
-            }}
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              {/* Currency dropdown */}
-              <div>
-                <label
-                  htmlFor="txd-currency"
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Blockchain-Kürzel
-                </label>
-                <select
-                  id="txd-currency"
-                  value={txDetailCurrency}
-                  onChange={(e) => setTxDetailCurrency(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
-                  style={{
-                    background: "oklch(0.13 0.025 248)",
-                    border: "1px solid oklch(0.32 0.06 248)",
-                    color: "oklch(0.96 0.015 230)",
-                  }}
-                >
-                  <option value="ICP">ICP – Internet Computer</option>
-                  <option value="BTC">BTC – Bitcoin</option>
-                  <option value="ETH">ETH – Ethereum</option>
-                  <option value="XRP">XRP – Ripple</option>
-                  <option value="SOL">SOL – Solana</option>
-                </select>
-              </div>
-
-              {/* TX Hash */}
-              <div className="sm:col-span-2">
-                <label
-                  htmlFor="txd-hash"
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Transaction-Hash
-                </label>
-                <input
-                  id="txd-hash"
-                  type="text"
-                  value={txDetailHash}
-                  onChange={(e) => setTxDetailHash(e.target.value)}
-                  placeholder="Vollständigen TX-Hash eingeben…"
-                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all font-mono"
-                  style={{
-                    background: "oklch(0.13 0.025 248)",
-                    border: "1px solid oklch(0.32 0.06 248)",
-                    color: "oklch(0.96 0.015 230)",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Result fields + button */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              {/* Zeitstempel */}
-              <div>
-                <p
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Zeitstempel (UTC)
-                </p>
-                <div
-                  className="w-full px-3 py-2.5 rounded-xl text-sm min-h-[42px] flex items-center"
-                  style={{
-                    background: "oklch(0.13 0.025 248)",
-                    border: "1px solid oklch(0.32 0.06 248)",
-                    color: txDetailLoading
-                      ? "oklch(0.72 0.13 218)"
-                      : txDetailResult &&
-                          !("error" in txDetailResult) &&
-                          txDetailResult.timestamp
-                        ? "oklch(0.55 0.15 145)"
-                        : "oklch(0.45 0.03 235)",
-                  }}
-                >
-                  {txDetailLoading ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Abrufen…
-                    </span>
-                  ) : txDetailResult && !("error" in txDetailResult) ? (
-                    txDetailResult.timestamp || "–"
-                  ) : (
-                    <span style={{ color: "oklch(0.45 0.03 235)" }}>
-                      – wird angezeigt
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Anzahl der Coins */}
-              <div>
-                <p
-                  className="block text-xs font-medium mb-1.5"
-                  style={{ color: "oklch(0.73 0.03 235)" }}
-                >
-                  Anzahl der Coins
-                </p>
-                <div
-                  className="w-full px-3 py-2.5 rounded-xl text-sm font-bold min-h-[42px] flex items-center"
-                  style={{
-                    background: "oklch(0.13 0.025 248)",
-                    border: "1px solid oklch(0.32 0.06 248)",
-                    color: txDetailLoading
-                      ? "oklch(0.72 0.13 218)"
-                      : txDetailResult &&
-                          !("error" in txDetailResult) &&
-                          txDetailResult.amount
-                        ? "oklch(0.55 0.15 145)"
-                        : "oklch(0.45 0.03 235)",
-                  }}
-                >
-                  {txDetailLoading ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Abrufen…
-                    </span>
-                  ) : txDetailResult && !("error" in txDetailResult) ? (
-                    `${txDetailResult.amount} ${txDetailResult.currency}`
-                  ) : (
-                    <span style={{ color: "oklch(0.45 0.03 235)" }}>
-                      – wird angezeigt
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Error message */}
-            {txDetailResult && "error" in txDetailResult && (
+              {/* Block-Explorer Links */}
               <div
-                className="mb-4 px-3 py-2.5 rounded-xl text-sm"
+                className="mb-5 flex flex-col gap-1.5"
                 style={{
-                  background: "oklch(0.62 0.22 25 / 0.1)",
-                  border: "1px solid oklch(0.62 0.22 25 / 0.3)",
-                  color: "oklch(0.62 0.22 25)",
+                  background: "oklch(0.14 0.03 248)",
+                  border: "1px solid oklch(0.27 0.055 248)",
+                  borderRadius: "0.75rem",
+                  padding: "0.75rem 1rem",
                 }}
               >
-                {txDetailResult.error}
+                <a
+                  href="https://www.oklink.com/de"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm hover:opacity-80 transition-opacity"
+                  style={{ color: "oklch(0.72 0.13 218)" }}
+                >
+                  <span style={{ color: "oklch(0.65 0.03 235)" }}>
+                    Block-Explorer [für BTC, ETH, SOL]
+                  </span>
+                  <span
+                    style={{
+                      color: "oklch(0.72 0.13 218)",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    https://www.oklink.com/de
+                  </span>
+                </a>
+                <a
+                  href="https://blockchair.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm hover:opacity-80 transition-opacity"
+                  style={{ color: "oklch(0.72 0.13 218)" }}
+                >
+                  <span style={{ color: "oklch(0.65 0.03 235)" }}>
+                    Block-Explorer [für BTC, ETH, XRP]
+                  </span>
+                  <span
+                    style={{
+                      color: "oklch(0.72 0.13 218)",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    https://blockchair.com/
+                  </span>
+                </a>
+                <a
+                  href="https://dashboard.internetcomputer.org/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm hover:opacity-80 transition-opacity"
+                  style={{ color: "oklch(0.72 0.13 218)" }}
+                >
+                  <span style={{ color: "oklch(0.65 0.03 235)" }}>
+                    Block-Explorer [für ICP]
+                  </span>
+                  <span
+                    style={{
+                      color: "oklch(0.72 0.13 218)",
+                      textDecoration: "underline",
+                    }}
+                  >
+                    https://dashboard.internetcomputer.org/
+                  </span>
+                </a>
               </div>
-            )}
 
-            {/* Button */}
-            <button
-              type="button"
-              onClick={() => fetchTxDetails(txDetailCurrency, txDetailHash)}
-              disabled={txDetailLoading || !txDetailHash.trim()}
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{
-                background: "oklch(0.72 0.13 218 / 0.15)",
-                color: "oklch(0.72 0.13 218)",
-                border: "1px solid oklch(0.72 0.13 218 / 0.4)",
-              }}
-            >
-              Transaktion abfragen
-            </button>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                {/* Currency dropdown */}
+                <div>
+                  <label
+                    htmlFor="calc-currency"
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Kryptowährung
+                  </label>
+                  <select
+                    id="calc-currency"
+                    value={cryptoCurrency}
+                    onChange={(e) => setCryptoCurrency(e.target.value)}
+                    data-ocid="calc.select"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      border: "1px solid oklch(0.32 0.06 248)",
+                      color: "oklch(0.96 0.015 230)",
+                    }}
+                  >
+                    <option value="BTC">BTC – Bitcoin</option>
+                    <option value="ETH">ETH – Ethereum</option>
+                    <option value="ICP">ICP – Internet Computer</option>
+                    <option value="XRP">XRP – Ripple</option>
+                    <option value="SOL">SOL – Solana</option>
+                  </select>
+                </div>
+
+                {/* Coin amount */}
+                <div>
+                  <label
+                    htmlFor="calc-amount"
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Anzahl der Coins
+                  </label>
+                  <input
+                    id="calc-amount"
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={coinAmount}
+                    onChange={(e) => setCoinAmount(e.target.value)}
+                    placeholder="z.B. 1.5"
+                    data-ocid="calc.input"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      border: "1px solid oklch(0.32 0.06 248)",
+                      color: "oklch(0.96 0.015 230)",
+                    }}
+                  />
+                </div>
+
+                {/* Timestamp */}
+                <div>
+                  <label
+                    htmlFor="calc-timestamp"
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Zeitstempel (z.B. 2025-04-06 14:30)
+                  </label>
+                  <input
+                    id="calc-timestamp"
+                    type="text"
+                    value={calcTimestamp}
+                    onChange={(e) => setCalcTimestamp(e.target.value)}
+                    onPaste={(e) => {
+                      const pasted = e.clipboardData.getData("text").trim();
+                      e.preventDefault();
+                      const normalized = pasted
+                        .replace("T", " ")
+                        .replace(/:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/, "")
+                        .slice(0, 16);
+                      setCalcTimestamp(normalized);
+                    }}
+                    placeholder="YYYY-MM-DD HH:MM"
+                    data-ocid="calc.timestamp.input"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      border: "1px solid oklch(0.32 0.06 248)",
+                      color: "oklch(0.96 0.015 230)",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Result + Button row */}
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-1">
+                  <p
+                    className="block text-xs font-medium mb-1.5"
+                    style={{ color: "oklch(0.73 0.03 235)" }}
+                  >
+                    Euro-Betrag (historisch)
+                  </p>
+                  <div
+                    data-ocid="calc.success_state"
+                    className="w-full px-3 py-2.5 rounded-xl text-sm font-bold min-h-[42px] flex items-center"
+                    style={{
+                      background: "oklch(0.13 0.025 248)",
+                      border: "1px solid oklch(0.32 0.06 248)",
+                      color: calcLoading
+                        ? "oklch(0.72 0.13 218)"
+                        : euroResult !== null
+                          ? "oklch(0.55 0.15 145)"
+                          : "oklch(0.55 0.03 235)",
+                    }}
+                  >
+                    {calcLoading ? (
+                      <span
+                        className="flex items-center gap-2"
+                        data-ocid="calc.loading_state"
+                      >
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Berechne…
+                      </span>
+                    ) : calcError ? (
+                      <span
+                        data-ocid="calc.error_state"
+                        style={{
+                          color: "oklch(0.62 0.22 25)",
+                          fontWeight: 400,
+                          fontSize: "0.8rem",
+                        }}
+                      >
+                        {calcError}
+                      </span>
+                    ) : euroResult !== null ? (
+                      `${euroResult.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+                    ) : (
+                      <span style={{ color: "oklch(0.45 0.03 235)" }}>
+                        – Bitte alle Felder ausfüllen
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    fetchHistoricalEuroPrice(
+                      cryptoCurrency,
+                      coinAmount,
+                      calcTimestamp,
+                    )
+                  }
+                  disabled={calcLoading || !coinAmount || !calcTimestamp}
+                  data-ocid="calc.primary_button"
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                  style={{
+                    background: "oklch(0.72 0.13 218 / 0.15)",
+                    color: "oklch(0.72 0.13 218)",
+                    border: "1px solid oklch(0.72 0.13 218 / 0.4)",
+                  }}
+                >
+                  Jetzt berechnen
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </motion.div>

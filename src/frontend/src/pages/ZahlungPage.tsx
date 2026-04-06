@@ -178,11 +178,20 @@ export default function ZahlungPage() {
     setSubmitMessage("");
     setSubmitError("");
 
+    // Read nickname fresh from session to avoid stale state
+    const currentSession = getSession();
+    const currentNickname = nickname || currentSession?.nickname || "";
+    if (!currentNickname) {
+      setSubmitError("Sitzung abgelaufen. Bitte neu anmelden.");
+      setSubmitting(false);
+      return;
+    }
+
     // Step 1: Submit payment proof
-    let submitResult: { __kind__: string; error?: string } | null = null;
+    let submitResult: { ok?: null; error?: string } | null = null;
     try {
       submitResult = await backend.submitPaymentProof(
-        nickname,
+        currentNickname,
         selectedCurrency,
         txHash.trim(),
       );
@@ -193,7 +202,7 @@ export default function ZahlungPage() {
       return;
     }
 
-    if (!submitResult || submitResult.__kind__ === "error") {
+    if (!submitResult || "error" in submitResult) {
       setSubmitError(
         submitResult?.error ?? "Unbekannter Fehler. Bitte erneut versuchen.",
       );
@@ -206,13 +215,13 @@ export default function ZahlungPage() {
       try {
         const verify = await backend.verifyBTCTransaction(
           txHash.trim(),
-          nickname,
+          currentNickname,
         );
-        if (verify.__kind__ === "confirmed") {
+        if ("confirmed" in verify) {
           setSubmitMessage(
             "BTC-Transaktion bestätigt! Ausgleich wird verarbeitet.",
           );
-        } else if (verify.__kind__ === "pending") {
+        } else if ("pending" in verify) {
           setSubmitMessage(
             "Ausgleich eingereicht. BTC-Transaktion wird noch bestätigt – bitte haben Sie etwas Geduld.",
           );
@@ -230,7 +239,7 @@ export default function ZahlungPage() {
 
     // Step 3: Refresh payment status (non-critical)
     try {
-      const updated = await backend.getMyPaymentStatus(nickname);
+      const updated = await backend.getMyPaymentStatus(currentNickname);
       setPaymentStatus(updated);
     } catch {
       // ignore

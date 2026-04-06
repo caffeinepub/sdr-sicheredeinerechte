@@ -133,7 +133,6 @@ export interface _SERVICE {
     { 'ok' : Array<PdfEntryRecord> } |
       { 'error' : string }
   >,
-  '_caffeineStorageCreateCertificate' : ActorMethod<[string], { 'method' : string; 'blob_hash' : string }>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

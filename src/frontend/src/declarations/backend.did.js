@@ -173,11 +173,6 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'ok' : IDL.Vec(PdfEntry), 'error' : IDL.Text })],
       [],
     ),
-  '_caffeineStorageCreateCertificate' : IDL.Func(
-      [IDL.Text],
-      [IDL.Record({ 'method' : IDL.Text, 'blob_hash' : IDL.Text })],
-      [],
-    ),
 });
 
 export const idlFactory = ({ IDL }) => {
@@ -339,11 +334,6 @@ export const idlFactory = ({ IDL }) => {
     'getAllPdfEntries' : IDL.Func(
         [IDL.Text],
         [IDL.Variant({ 'ok' : IDL.Vec(PdfEntry), 'error' : IDL.Text })],
-        [],
-      ),
-    '_caffeineStorageCreateCertificate' : IDL.Func(
-        [IDL.Text],
-        [IDL.Record({ 'method' : IDL.Text, 'blob_hash' : IDL.Text })],
         [],
       ),
   });

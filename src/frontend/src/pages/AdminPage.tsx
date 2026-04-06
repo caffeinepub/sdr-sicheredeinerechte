@@ -619,6 +619,8 @@ export default function AdminPage() {
 
   // ODT management state
   const [showPdfManagement, setShowPdfManagement] = useState(false);
+  const [showCryptoCalculator, setShowCryptoCalculator] = useState(false);
+  const [showTxDetails, setShowTxDetails] = useState(false);
 
   // Krypto-zu-Euro-Rechner state
   const [cryptoCurrency, setCryptoCurrency] = useState("BTC");
@@ -628,6 +630,20 @@ export default function AdminPage() {
   const [calcLoading, setCalcLoading] = useState(false);
   const [calcError, setCalcError] = useState("");
   const calcDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Transaktions-Details abfragen state
+  const [txDetailCurrency, setTxDetailCurrency] = useState("ICP");
+  const [txDetailHash, setTxDetailHash] = useState("");
+  const [txDetailLoading, setTxDetailLoading] = useState(false);
+  const [txDetailResult, setTxDetailResult] = useState<
+    | null
+    | { timestamp: string; amount: string; currency: string }
+    | { error: string }
+  >(null);
+  const txDetailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
   const [pdfEntries, setPdfEntries] = useState<PdfEntry[]>([]);
   const [loadingPdfs, setLoadingPdfs] = useState(false);
   const [blockUploadState, setBlockUploadState] = useState<
@@ -934,6 +950,147 @@ export default function AdminPage() {
     SOL: "solana",
   };
 
+  const fetchTxDetails = async (currency: string, txHash: string) => {
+    if (!currency || !txHash.trim()) return;
+    setTxDetailLoading(true);
+    setTxDetailResult(null);
+    const hash = txHash.trim();
+    try {
+      let timestamp = "";
+      let amount = "";
+      const resultCurrency = currency;
+
+      if (currency === "ICP") {
+        const resp = await fetch(
+          "https://rosetta-api.internetcomputer.org/search/transactions",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              network_identifier: {
+                blockchain: "Internet Computer",
+                network: "00000000000000020101",
+              },
+              transaction_identifier: { hash },
+            }),
+          },
+        );
+        if (!resp.ok) throw new Error("ICP Rosetta API nicht erreichbar");
+        const data = await resp.json();
+        const tx = data?.transactions?.[0]?.transaction;
+        const ops = tx?.operations ?? [];
+        const receiverOp =
+          ops.find((op: { amount?: { value?: string } }) => {
+            const v = Number(op?.amount?.value ?? "0");
+            return v > 0;
+          }) ??
+          ops[1] ??
+          ops[0];
+        const e8s = Number(receiverOp?.amount?.value ?? "0");
+        amount = (Math.abs(e8s) / 100_000_000).toFixed(8);
+        const tsMs = tx?.metadata?.timestamp ?? 0;
+        timestamp = String(Math.floor(Number(tsMs) / 1000));
+      } else if (currency === "ETH") {
+        const txResp = await fetch(
+          `https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=${hash}`,
+        );
+        if (!txResp.ok) throw new Error("Etherscan nicht erreichbar");
+        const txData = await txResp.json();
+        const txResult = txData?.result;
+        if (!txResult) throw new Error("Transaktion nicht gefunden");
+        const blockNum = txResult.blockNumber;
+        const valueWei = BigInt(txResult.value ?? "0x0");
+        amount = (Number(valueWei) / 1e18).toFixed(8);
+        const blockResp = await fetch(
+          `https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=${blockNum}&boolean=false`,
+        );
+        const blockData = await blockResp.json();
+        const tsHex = blockData?.result?.timestamp ?? "0x0";
+        timestamp = String(Number.parseInt(tsHex, 16));
+      } else if (currency === "BTC") {
+        const resp = await fetch(`https://blockchain.info/rawtx/${hash}`);
+        if (!resp.ok) throw new Error("Blockchain.info nicht erreichbar");
+        const data = await resp.json();
+        timestamp = String(data?.time ?? 0);
+        const outs = data?.out ?? [];
+        const totalSats = outs.reduce(
+          (sum: number, o: { value?: number }) => sum + (o?.value ?? 0),
+          0,
+        );
+        amount = (totalSats / 100_000_000).toFixed(8);
+      } else if (currency === "XRP") {
+        const resp = await fetch(`https://api.xrpscan.com/api/v1/tx/${hash}`);
+        if (!resp.ok) throw new Error("XRPScan nicht erreichbar");
+        const data = await resp.json();
+        const rippleEpoch = 946684800;
+        timestamp = String((data?.date ?? 0) + rippleEpoch);
+        const drops = Number(data?.Amount ?? data?.amount ?? "0");
+        amount = (drops / 1_000_000).toFixed(6);
+      } else if (currency === "SOL") {
+        const resp = await fetch("https://api.mainnet-beta.solana.com", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "getTransaction",
+            params: [
+              hash,
+              { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 },
+            ],
+          }),
+        });
+        if (!resp.ok) throw new Error("Solana RPC nicht erreichbar");
+        const data = await resp.json();
+        const result = data?.result;
+        if (!result) throw new Error("Transaktion nicht gefunden");
+        timestamp = String(result?.blockTime ?? 0);
+        const instructions = result?.transaction?.message?.instructions ?? [];
+        let lamports = 0;
+        for (const ix of instructions) {
+          if (ix?.parsed?.info?.lamports) {
+            lamports = ix.parsed.info.lamports;
+            break;
+          }
+        }
+        if (lamports === 0) {
+          const pre = result?.meta?.preBalances ?? [];
+          const post = result?.meta?.postBalances ?? [];
+          if (pre.length > 1 && post.length > 1) {
+            lamports = Math.abs(post[1] - pre[1]);
+          }
+        }
+        amount = (lamports / 1_000_000_000).toFixed(9);
+      }
+
+      if (!timestamp || timestamp === "0")
+        throw new Error("Zeitstempel nicht gefunden");
+      // Format timestamp as "YYYY-MM-DD HH:MM" (UTC)
+      let formattedTimestamp = timestamp;
+      const tsNum = Number(timestamp);
+      if (!Number.isNaN(tsNum) && tsNum > 0) {
+        const d = new Date(tsNum * 1000);
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+        const dd = String(d.getUTCDate()).padStart(2, "0");
+        const hh = String(d.getUTCHours()).padStart(2, "0");
+        const min = String(d.getUTCMinutes()).padStart(2, "0");
+        formattedTimestamp = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+      }
+      setTxDetailResult({
+        timestamp: formattedTimestamp,
+        amount,
+        currency: resultCurrency,
+      });
+    } catch (e: unknown) {
+      setTxDetailResult({
+        error: e instanceof Error ? e.message : "Transaktion nicht gefunden.",
+      });
+    } finally {
+      setTxDetailLoading(false);
+    }
+  };
+
   const fetchHistoricalEuroPrice = async (
     currency: string,
     amount: string,
@@ -991,6 +1148,36 @@ export default function AdminPage() {
       if (calcDebounceRef.current) clearTimeout(calcDebounceRef.current);
     };
   }, [cryptoCurrency, coinAmount, calcTimestamp]);
+
+  // Debounced auto-fetch for transaction details
+  // biome-ignore lint/correctness/useExhaustiveDependencies: fetchTxDetails is stable within component lifecycle
+  useEffect(() => {
+    if (txDetailDebounceRef.current) clearTimeout(txDetailDebounceRef.current);
+    if (txDetailCurrency && txDetailHash.trim().length > 10) {
+      txDetailDebounceRef.current = setTimeout(() => {
+        fetchTxDetails(txDetailCurrency, txDetailHash);
+      }, 800);
+    } else {
+      setTxDetailResult(null);
+    }
+    return () => {
+      if (txDetailDebounceRef.current)
+        clearTimeout(txDetailDebounceRef.current);
+    };
+  }, [txDetailCurrency, txDetailHash]);
+
+  // Auto-fill Krypto-zu-Euro-Rechner when transaction details are loaded
+  useEffect(() => {
+    if (txDetailResult && !("error" in txDetailResult)) {
+      setCryptoCurrency(txDetailResult.currency);
+      setCoinAmount(txDetailResult.amount);
+      // Convert "YYYY-MM-DD HH:MM" to datetime-local format "YYYY-MM-DDTHH:MM"
+      if (txDetailResult.timestamp) {
+        const formatted = txDetailResult.timestamp.replace(" ", "T");
+        setCalcTimestamp(formatted);
+      }
+    }
+  }, [txDetailResult]);
 
   if (!isAuthenticated) {
     return null;
@@ -1217,16 +1404,22 @@ export default function AdminPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.05 }}
-        className="w-full max-w-3xl mx-auto mb-6"
+        className="w-full mb-6"
       >
-        <div
-          className="rounded-2xl p-6"
+        {/* Collapsible header */}
+        <button
+          type="button"
+          onClick={() => setShowCryptoCalculator((v) => !v)}
+          className="w-full flex items-center justify-center px-5 py-4 transition-all relative"
           style={{
             background: "oklch(0.17 0.03 248)",
             border: "1px solid oklch(0.27 0.055 248)",
+            borderRadius: showCryptoCalculator ? "1rem 1rem 0 0" : "1rem",
+            cursor: "pointer",
           }}
+          data-ocid="calc.toggle"
         >
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{
@@ -1246,165 +1439,420 @@ export default function AdminPage() {
               Krypto-zu-Euro-Rechner
             </h2>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-            {/* Currency dropdown */}
-            <div>
-              <label
-                htmlFor="calc-currency"
-                className="block text-xs font-medium mb-1.5"
-                style={{ color: "oklch(0.73 0.03 235)" }}
-              >
-                Kryptowährung
-              </label>
-              <select
-                id="calc-currency"
-                value={cryptoCurrency}
-                onChange={(e) => setCryptoCurrency(e.target.value)}
-                data-ocid="calc.select"
-                className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
-                style={{
-                  background: "oklch(0.13 0.025 248)",
-                  border: "1px solid oklch(0.32 0.06 248)",
-                  color: "oklch(0.96 0.015 230)",
-                }}
-              >
-                <option value="BTC">BTC – Bitcoin</option>
-                <option value="ETH">ETH – Ethereum</option>
-                <option value="ICP">ICP – Internet Computer</option>
-                <option value="XRP">XRP – Ripple</option>
-                <option value="SOL">SOL – Solana</option>
-              </select>
-            </div>
-
-            {/* Coin amount */}
-            <div>
-              <label
-                htmlFor="calc-amount"
-                className="block text-xs font-medium mb-1.5"
-                style={{ color: "oklch(0.73 0.03 235)" }}
-              >
-                Anzahl der Coins
-              </label>
-              <input
-                id="calc-amount"
-                type="number"
-                min="0"
-                step="any"
-                value={coinAmount}
-                onChange={(e) => setCoinAmount(e.target.value)}
-                placeholder="z.B. 1.5"
-                data-ocid="calc.input"
-                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
-                style={{
-                  background: "oklch(0.13 0.025 248)",
-                  border: "1px solid oklch(0.32 0.06 248)",
-                  color: "oklch(0.96 0.015 230)",
-                }}
+          <div className="absolute right-5 top-1/2 -translate-y-1/2">
+            {showCryptoCalculator ? (
+              <ChevronUp
+                className="w-5 h-5"
+                style={{ color: "oklch(0.72 0.13 218)" }}
               />
-            </div>
-
-            {/* Timestamp */}
-            <div>
-              <label
-                htmlFor="calc-timestamp"
-                className="block text-xs font-medium mb-1.5"
-                style={{ color: "oklch(0.73 0.03 235)" }}
-              >
-                Zeitstempel
-              </label>
-              <input
-                id="calc-timestamp"
-                type="datetime-local"
-                value={calcTimestamp}
-                onChange={(e) => setCalcTimestamp(e.target.value)}
-                data-ocid="calc.timestamp.input"
-                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
-                style={{
-                  background: "oklch(0.13 0.025 248)",
-                  border: "1px solid oklch(0.32 0.06 248)",
-                  color: "oklch(0.96 0.015 230)",
-                  colorScheme: "dark",
-                }}
+            ) : (
+              <ChevronDown
+                className="w-5 h-5"
+                style={{ color: "oklch(0.72 0.13 218)" }}
               />
-            </div>
+            )}
           </div>
+        </button>
 
-          {/* Result + Button row */}
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            {/* Euro result */}
-            <div className="flex-1">
-              <p
-                className="block text-xs font-medium mb-1.5"
-                style={{ color: "oklch(0.73 0.03 235)" }}
-              >
-                Euro-Betrag (historisch)
-              </p>
-              <div
-                data-ocid="calc.success_state"
-                className="w-full px-3 py-2.5 rounded-xl text-sm font-bold min-h-[42px] flex items-center"
-                style={{
-                  background: "oklch(0.13 0.025 248)",
-                  border: "1px solid oklch(0.32 0.06 248)",
-                  color: calcLoading
-                    ? "oklch(0.72 0.13 218)"
-                    : euroResult !== null
-                      ? "oklch(0.55 0.15 145)"
-                      : "oklch(0.55 0.03 235)",
-                }}
-              >
-                {calcLoading ? (
-                  <span
-                    className="flex items-center gap-2"
-                    data-ocid="calc.loading_state"
-                  >
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Berechne…
-                  </span>
-                ) : calcError ? (
-                  <span
-                    data-ocid="calc.error_state"
-                    style={{
-                      color: "oklch(0.62 0.22 25)",
-                      fontWeight: 400,
-                      fontSize: "0.8rem",
-                    }}
-                  >
-                    {calcError}
-                  </span>
-                ) : euroResult !== null ? (
-                  `${euroResult.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
-                ) : (
-                  <span style={{ color: "oklch(0.45 0.03 235)" }}>
-                    – Bitte alle Felder ausfüllen
-                  </span>
-                )}
+        {/* Tool content */}
+        {showCryptoCalculator && (
+          <div
+            className="p-6"
+            style={{
+              background: "oklch(0.17 0.03 248)",
+              border: "1px solid oklch(0.27 0.055 248)",
+              borderTop: "none",
+              borderRadius: "0 0 1rem 1rem",
+            }}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              {/* Currency dropdown */}
+              <div>
+                <label
+                  htmlFor="calc-currency"
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Kryptowährung
+                </label>
+                <select
+                  id="calc-currency"
+                  value={cryptoCurrency}
+                  onChange={(e) => setCryptoCurrency(e.target.value)}
+                  data-ocid="calc.select"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+                  style={{
+                    background: "oklch(0.13 0.025 248)",
+                    border: "1px solid oklch(0.32 0.06 248)",
+                    color: "oklch(0.96 0.015 230)",
+                  }}
+                >
+                  <option value="BTC">BTC – Bitcoin</option>
+                  <option value="ETH">ETH – Ethereum</option>
+                  <option value="ICP">ICP – Internet Computer</option>
+                  <option value="XRP">XRP – Ripple</option>
+                  <option value="SOL">SOL – Solana</option>
+                </select>
+              </div>
+
+              {/* Coin amount */}
+              <div>
+                <label
+                  htmlFor="calc-amount"
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Anzahl der Coins
+                </label>
+                <input
+                  id="calc-amount"
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={coinAmount}
+                  onChange={(e) => setCoinAmount(e.target.value)}
+                  placeholder="z.B. 1.5"
+                  data-ocid="calc.input"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+                  style={{
+                    background: "oklch(0.13 0.025 248)",
+                    border: "1px solid oklch(0.32 0.06 248)",
+                    color: "oklch(0.96 0.015 230)",
+                  }}
+                />
+              </div>
+
+              {/* Timestamp */}
+              <div>
+                <label
+                  htmlFor="calc-timestamp"
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Zeitstempel
+                </label>
+                <input
+                  id="calc-timestamp"
+                  type="datetime-local"
+                  value={calcTimestamp}
+                  onChange={(e) => setCalcTimestamp(e.target.value)}
+                  data-ocid="calc.timestamp.input"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
+                  style={{
+                    background: "oklch(0.13 0.025 248)",
+                    border: "1px solid oklch(0.32 0.06 248)",
+                    color: "oklch(0.96 0.015 230)",
+                    colorScheme: "dark",
+                  }}
+                />
               </div>
             </div>
 
-            {/* Calculate button */}
+            {/* Result + Button row */}
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              {/* Euro result */}
+              <div className="flex-1">
+                <p
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Euro-Betrag (historisch)
+                </p>
+                <div
+                  data-ocid="calc.success_state"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm font-bold min-h-[42px] flex items-center"
+                  style={{
+                    background: "oklch(0.13 0.025 248)",
+                    border: "1px solid oklch(0.32 0.06 248)",
+                    color: calcLoading
+                      ? "oklch(0.72 0.13 218)"
+                      : euroResult !== null
+                        ? "oklch(0.55 0.15 145)"
+                        : "oklch(0.55 0.03 235)",
+                  }}
+                >
+                  {calcLoading ? (
+                    <span
+                      className="flex items-center gap-2"
+                      data-ocid="calc.loading_state"
+                    >
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Berechne…
+                    </span>
+                  ) : calcError ? (
+                    <span
+                      data-ocid="calc.error_state"
+                      style={{
+                        color: "oklch(0.62 0.22 25)",
+                        fontWeight: 400,
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      {calcError}
+                    </span>
+                  ) : euroResult !== null ? (
+                    `${euroResult.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+                  ) : (
+                    <span style={{ color: "oklch(0.45 0.03 235)" }}>
+                      – Bitte alle Felder ausfüllen
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Calculate button */}
+              <button
+                type="button"
+                onClick={() =>
+                  fetchHistoricalEuroPrice(
+                    cryptoCurrency,
+                    coinAmount,
+                    calcTimestamp,
+                  )
+                }
+                disabled={calcLoading || !coinAmount || !calcTimestamp}
+                data-ocid="calc.primary_button"
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                style={{
+                  background: "oklch(0.72 0.13 218 / 0.15)",
+                  color: "oklch(0.72 0.13 218)",
+                  border: "1px solid oklch(0.72 0.13 218 / 0.4)",
+                }}
+              >
+                Jetzt berechnen
+              </button>
+            </div>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Transaktions-Details abfragen */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.07 }}
+        className="w-full mb-6"
+      >
+        {/* Collapsible header */}
+        <button
+          type="button"
+          onClick={() => setShowTxDetails((v) => !v)}
+          className="w-full flex items-center justify-center px-5 py-4 transition-all relative"
+          style={{
+            background: "oklch(0.17 0.03 248)",
+            border: "1px solid oklch(0.27 0.055 248)",
+            borderRadius: showTxDetails ? "1rem 1rem 0 0" : "1rem",
+            cursor: "pointer",
+          }}
+          data-ocid="txdetails.toggle"
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                background: "oklch(0.72 0.13 218 / 0.15)",
+                border: "1px solid oklch(0.72 0.13 218 / 0.3)",
+              }}
+            >
+              <Search
+                className="w-4 h-4"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              />
+            </div>
+            <h2
+              className="font-bold text-lg"
+              style={{ color: "oklch(0.96 0.015 230)" }}
+            >
+              Transaktions-Details abfragen
+            </h2>
+          </div>
+          <div className="absolute right-5 top-1/2 -translate-y-1/2">
+            {showTxDetails ? (
+              <ChevronUp
+                className="w-5 h-5"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              />
+            ) : (
+              <ChevronDown
+                className="w-5 h-5"
+                style={{ color: "oklch(0.72 0.13 218)" }}
+              />
+            )}
+          </div>
+        </button>
+
+        {/* Tool content */}
+        {showTxDetails && (
+          <div
+            className="p-6"
+            style={{
+              background: "oklch(0.17 0.03 248)",
+              border: "1px solid oklch(0.27 0.055 248)",
+              borderTop: "none",
+              borderRadius: "0 0 1rem 1rem",
+            }}
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              {/* Currency dropdown */}
+              <div>
+                <label
+                  htmlFor="txd-currency"
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Blockchain-Kürzel
+                </label>
+                <select
+                  id="txd-currency"
+                  value={txDetailCurrency}
+                  onChange={(e) => setTxDetailCurrency(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl text-sm font-medium outline-none transition-all"
+                  style={{
+                    background: "oklch(0.13 0.025 248)",
+                    border: "1px solid oklch(0.32 0.06 248)",
+                    color: "oklch(0.96 0.015 230)",
+                  }}
+                >
+                  <option value="ICP">ICP – Internet Computer</option>
+                  <option value="BTC">BTC – Bitcoin</option>
+                  <option value="ETH">ETH – Ethereum</option>
+                  <option value="XRP">XRP – Ripple</option>
+                  <option value="SOL">SOL – Solana</option>
+                </select>
+              </div>
+
+              {/* TX Hash */}
+              <div className="sm:col-span-2">
+                <label
+                  htmlFor="txd-hash"
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Transaction-Hash
+                </label>
+                <input
+                  id="txd-hash"
+                  type="text"
+                  value={txDetailHash}
+                  onChange={(e) => setTxDetailHash(e.target.value)}
+                  placeholder="Vollständigen TX-Hash eingeben…"
+                  className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all font-mono"
+                  style={{
+                    background: "oklch(0.13 0.025 248)",
+                    border: "1px solid oklch(0.32 0.06 248)",
+                    color: "oklch(0.96 0.015 230)",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Result fields + button */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              {/* Zeitstempel */}
+              <div>
+                <p
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Zeitstempel (UTC)
+                </p>
+                <div
+                  className="w-full px-3 py-2.5 rounded-xl text-sm min-h-[42px] flex items-center"
+                  style={{
+                    background: "oklch(0.13 0.025 248)",
+                    border: "1px solid oklch(0.32 0.06 248)",
+                    color: txDetailLoading
+                      ? "oklch(0.72 0.13 218)"
+                      : txDetailResult &&
+                          !("error" in txDetailResult) &&
+                          txDetailResult.timestamp
+                        ? "oklch(0.55 0.15 145)"
+                        : "oklch(0.45 0.03 235)",
+                  }}
+                >
+                  {txDetailLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Abrufen…
+                    </span>
+                  ) : txDetailResult && !("error" in txDetailResult) ? (
+                    txDetailResult.timestamp || "–"
+                  ) : (
+                    <span style={{ color: "oklch(0.45 0.03 235)" }}>
+                      – wird angezeigt
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Anzahl der Coins */}
+              <div>
+                <p
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: "oklch(0.73 0.03 235)" }}
+                >
+                  Anzahl der Coins
+                </p>
+                <div
+                  className="w-full px-3 py-2.5 rounded-xl text-sm font-bold min-h-[42px] flex items-center"
+                  style={{
+                    background: "oklch(0.13 0.025 248)",
+                    border: "1px solid oklch(0.32 0.06 248)",
+                    color: txDetailLoading
+                      ? "oklch(0.72 0.13 218)"
+                      : txDetailResult &&
+                          !("error" in txDetailResult) &&
+                          txDetailResult.amount
+                        ? "oklch(0.55 0.15 145)"
+                        : "oklch(0.45 0.03 235)",
+                  }}
+                >
+                  {txDetailLoading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Abrufen…
+                    </span>
+                  ) : txDetailResult && !("error" in txDetailResult) ? (
+                    `${txDetailResult.amount} ${txDetailResult.currency}`
+                  ) : (
+                    <span style={{ color: "oklch(0.45 0.03 235)" }}>
+                      – wird angezeigt
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Error message */}
+            {txDetailResult && "error" in txDetailResult && (
+              <div
+                className="mb-4 px-3 py-2.5 rounded-xl text-sm"
+                style={{
+                  background: "oklch(0.62 0.22 25 / 0.1)",
+                  border: "1px solid oklch(0.62 0.22 25 / 0.3)",
+                  color: "oklch(0.62 0.22 25)",
+                }}
+              >
+                {txDetailResult.error}
+              </div>
+            )}
+
+            {/* Button */}
             <button
               type="button"
-              onClick={() =>
-                fetchHistoricalEuroPrice(
-                  cryptoCurrency,
-                  coinAmount,
-                  calcTimestamp,
-                )
-              }
-              disabled={calcLoading || !coinAmount || !calcTimestamp}
-              data-ocid="calc.primary_button"
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+              onClick={() => fetchTxDetails(txDetailCurrency, txDetailHash)}
+              disabled={txDetailLoading || !txDetailHash.trim()}
+              className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{
                 background: "oklch(0.72 0.13 218 / 0.15)",
                 color: "oklch(0.72 0.13 218)",
                 border: "1px solid oklch(0.72 0.13 218 / 0.4)",
               }}
             >
-              Jetzt berechnen
+              Transaktion abfragen
             </button>
           </div>
-        </div>
+        )}
       </motion.div>
 
       {/* Payment requests – full width */}

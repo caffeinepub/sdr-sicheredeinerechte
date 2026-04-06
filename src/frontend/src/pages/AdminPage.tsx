@@ -640,6 +640,7 @@ export default function AdminPage() {
     | { timestamp: string; amount: string; currency: string }
     | { error: string }
   >(null);
+  const [txDetailTimestamp, setTxDetailTimestamp] = useState("");
   const txDetailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -954,6 +955,7 @@ export default function AdminPage() {
     if (!currency || !txHash.trim()) return;
     setTxDetailLoading(true);
     setTxDetailResult(null);
+    setTxDetailTimestamp("");
     const hash = txHash.trim();
     try {
       let timestamp = "";
@@ -1175,6 +1177,7 @@ export default function AdminPage() {
       if (txDetailResult.timestamp) {
         // Keep as "YYYY-MM-DD HH:MM" text format (text input supports paste & typing)
         setCalcTimestamp(txDetailResult.timestamp);
+        setTxDetailTimestamp(txDetailResult.timestamp);
       }
     }
   }, [txDetailResult]);
@@ -1539,38 +1542,38 @@ export default function AdminPage() {
               {/* Result fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p
+                  <label
+                    htmlFor="txd-timestamp"
                     className="block text-xs font-medium mb-1.5"
                     style={{ color: "oklch(0.73 0.03 235)" }}
                   >
                     Zeitstempel (UTC)
-                  </p>
-                  <div
-                    className="w-full px-3 py-2.5 rounded-xl text-sm min-h-[42px] flex items-center"
-                    style={{
-                      background: "oklch(0.13 0.025 248)",
-                      border: "1px solid oklch(0.32 0.06 248)",
-                      color: txDetailLoading
-                        ? "oklch(0.72 0.13 218)"
-                        : txDetailResult &&
-                            !("error" in txDetailResult) &&
-                            txDetailResult.timestamp
-                          ? "oklch(0.55 0.15 145)"
-                          : "oklch(0.45 0.03 235)",
-                    }}
-                  >
-                    {txDetailLoading ? (
-                      <span className="flex items-center gap-2">
+                  </label>
+                  <div className="relative">
+                    {txDetailLoading && (
+                      <span
+                        className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none"
+                        style={{ color: "oklch(0.72 0.13 218)" }}
+                      >
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Abrufen…
-                      </span>
-                    ) : txDetailResult && !("error" in txDetailResult) ? (
-                      txDetailResult.timestamp || "–"
-                    ) : (
-                      <span style={{ color: "oklch(0.45 0.03 235)" }}>
-                        – wird angezeigt
+                        <span className="text-sm">Abrufen…</span>
                       </span>
                     )}
+                    <input
+                      id="txd-timestamp"
+                      type="text"
+                      value={txDetailTimestamp}
+                      onChange={(e) => setTxDetailTimestamp(e.target.value)}
+                      placeholder="YYYY-MM-DD HH:MM – oder einkopieren"
+                      className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all font-mono"
+                      style={{
+                        background: "oklch(0.13 0.025 248)",
+                        border: "1px solid oklch(0.32 0.06 248)",
+                        color: txDetailTimestamp
+                          ? "oklch(0.55 0.15 145)"
+                          : "oklch(0.45 0.03 235)",
+                      }}
+                    />
                   </div>
                 </div>
 

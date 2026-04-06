@@ -29,7 +29,7 @@ const HARDCODED_ADDRESSES = [
   {
     currency: "ICP",
     name: "Internet Computer",
-    address: "3pno5-fmoey-3jsyu-6p5qb-6egd7-zg445-sfdtc-3cpzh-qn5sh-wcgx6-cae",
+    address: "a34140f39e2ee1a1cbea4485e921060ab9b9f2afe5e595711516f665a0c6c326",
     color: "oklch(0.72 0.13 218)",
     symbol: "∞",
   },

@@ -12,27 +12,27 @@ import type {
   _SERVICE,
 } from "./declarations/backend.did.d.ts";
 
-// Raw actor cache (uses raw Candid types from IDL)
-let rawActorInstance:
-  | import("@icp-sdk/core/agent").ActorSubclass<_SERVICE>
-  | null = null;
 // Wrapper actor cache (Backend class with __kind__ conversions for legacy methods)
 let wrapperActorInstance: backendInterface | null = null;
 
+// Creates a fresh HttpAgent + Actor on every call - no caching to avoid stale actors
 async function getRawActor(): Promise<
   import("@icp-sdk/core/agent").ActorSubclass<_SERVICE>
 > {
-  if (rawActorInstance) return rawActorInstance;
   const { loadConfig } = await import("./config");
   const config = await loadConfig();
   const agent = new HttpAgent({ host: config.backend_host });
   // Always fetch root key - works on localhost and ICP staging/draft environments
-  await agent.fetchRootKey().catch(() => {});
-  rawActorInstance = Actor.createActor<_SERVICE>(idlFactory, {
+  try {
+    await agent.fetchRootKey();
+  } catch {
+    // ignore - not available on mainnet but required on staging/draft
+  }
+  const actor = Actor.createActor<_SERVICE>(idlFactory, {
     agent,
     canisterId: config.backend_canister_id,
   });
-  return rawActorInstance;
+  return actor;
 }
 
 async function getWrapperActor(): Promise<backendInterface> {
@@ -132,114 +132,135 @@ export const backend: backendInterface = new Proxy({} as backendInterface, {
         );
     }
 
-    // Use raw actor for all critical methods - no processError, no thrown exceptions
+    // Use raw actor for all critical methods - fresh actor on every call
     return (...args: unknown[]) =>
-      getRawActor().then(async (actor) => {
-        const fn = (
-          actor as unknown as Record<string, (...a: unknown[]) => unknown>
-        )[prop];
-        if (typeof fn !== "function") {
-          throw new Error(`Method ${prop} not found on actor`);
-        }
-        const result = await fn(...args);
-
-        switch (prop) {
-          // Auth methods: return with __kind__ so AuthModal checks work
-          case "login":
-          case "register":
-            return fromCandidResult(
-              result as { ok: unknown } | { error: string },
-            );
-
-          case "recordHeartbeat":
-          case "incrementVisitorCount":
-            return result;
-
-          case "getActiveVisitorCount":
-          case "getMusterschreibenCount":
-          case "getVisitorCount":
-          case "approvePayment":
-          case "rejectPayment":
-          case "grantMusterschreibenAccess":
-          case "revokeMusterschreibenAccess":
-          case "setCryptoAddress":
-          case "submitPaymentProof":
-            return fromCandidResult(
-              result as { ok: unknown } | { error: string },
-            );
-
-          case "getMyPaymentStatus": {
-            const opt = result as [] | [PaymentRequestRecord];
-            const rec = fromCandidOpt(opt);
-            return rec ? fromCandidPaymentRecord(rec) : null;
+      getRawActor().then(
+        async (actor) => {
+          const fn = (
+            actor as unknown as Record<string, (...a: unknown[]) => unknown>
+          )[prop];
+          if (typeof fn !== "function") {
+            throw new Error(`Method ${prop} not found on actor`);
           }
+          const result = await fn(...args);
 
-          case "getAllPaymentRequests": {
-            const r = result as
-              | { ok: PaymentRequestRecord[] }
-              | { error: string };
-            if ("ok" in r) {
-              return { __kind__: "ok", ok: r.ok.map(fromCandidPaymentRecord) };
+          switch (prop) {
+            // Auth methods: return with __kind__ so AuthModal checks work
+            case "login":
+            case "register":
+              return fromCandidResult(
+                result as { ok: unknown } | { error: string },
+              );
+
+            case "recordHeartbeat":
+            case "incrementVisitorCount":
+              return result;
+
+            case "getActiveVisitorCount":
+            case "getMusterschreibenCount":
+            case "getVisitorCount":
+            case "approvePayment":
+            case "rejectPayment":
+            case "grantMusterschreibenAccess":
+            case "revokeMusterschreibenAccess":
+            case "setCryptoAddress":
+            case "submitPaymentProof":
+              return fromCandidResult(
+                result as { ok: unknown } | { error: string },
+              );
+
+            case "getMyPaymentStatus": {
+              const opt = result as [] | [PaymentRequestRecord];
+              const rec = fromCandidOpt(opt);
+              return rec ? fromCandidPaymentRecord(rec) : null;
             }
-            return { __kind__: "error", error: (r as { error: string }).error };
-          }
 
-          case "hasMusterschreibenAccess":
-            return result as boolean;
-
-          case "getCryptoAddresses":
-            return result;
-
-          case "verifyBTCTransaction": {
-            const v = result as
-              | { confirmed: null }
-              | { pending: null }
-              | { error: string };
-            if ("confirmed" in v) return { __kind__: "confirmed" };
-            if ("pending" in v) return { __kind__: "pending" };
-            return { __kind__: "error", error: (v as { error: string }).error };
-          }
-
-          case "checkTransaction": {
-            const r = result as
-              | { ok: Record<string, unknown> }
-              | { error: string };
-            if ("ok" in r) {
+            case "getAllPaymentRequests": {
+              const r = result as
+                | { ok: PaymentRequestRecord[] }
+                | { error: string };
+              if ("ok" in r) {
+                return {
+                  __kind__: "ok",
+                  ok: r.ok.map(fromCandidPaymentRecord),
+                };
+              }
               return {
-                __kind__: "ok",
-                ok: fromCandidTxCheckResult(r.ok),
+                __kind__: "error",
+                error: (r as { error: string }).error,
               };
             }
-            return { __kind__: "error", error: (r as { error: string }).error };
-          }
 
-          case "addPdfEntry":
-          case "deletePdfEntry":
-            return fromCandidResult(
-              result as { ok: unknown } | { error: string },
-            );
+            case "hasMusterschreibenAccess":
+              return result as boolean;
 
-          case "getAllPdfEntries": {
-            const r = result as
-              | { ok: Record<string, unknown>[] }
-              | { error: string };
-            if ("ok" in r) {
+            case "getCryptoAddresses":
+              return result;
+
+            case "verifyBTCTransaction": {
+              const v = result as
+                | { confirmed: null }
+                | { pending: null }
+                | { error: string };
+              if ("confirmed" in v) return { __kind__: "confirmed" };
+              if ("pending" in v) return { __kind__: "pending" };
               return {
-                __kind__: "ok",
-                ok: r.ok.map(fromCandidPdfEntry),
+                __kind__: "error",
+                error: (v as { error: string }).error,
               };
             }
-            return { __kind__: "error", error: (r as { error: string }).error };
-          }
 
-          case "getPdfEntriesByBlock": {
-            const arr = result as Record<string, unknown>[];
-            return arr.map(fromCandidPdfEntry);
-          }
+            case "checkTransaction": {
+              const r = result as
+                | { ok: Record<string, unknown> }
+                | { error: string };
+              if ("ok" in r) {
+                return {
+                  __kind__: "ok",
+                  ok: fromCandidTxCheckResult(r.ok),
+                };
+              }
+              return {
+                __kind__: "error",
+                error: (r as { error: string }).error,
+              };
+            }
 
-          default:
-            return result;
-        }
-      });
+            case "addPdfEntry":
+            case "deletePdfEntry":
+              return fromCandidResult(
+                result as { ok: unknown } | { error: string },
+              );
+
+            case "getAllPdfEntries": {
+              const r = result as
+                | { ok: Record<string, unknown>[] }
+                | { error: string };
+              if ("ok" in r) {
+                return {
+                  __kind__: "ok",
+                  ok: r.ok.map(fromCandidPdfEntry),
+                };
+              }
+              return {
+                __kind__: "error",
+                error: (r as { error: string }).error,
+              };
+            }
+
+            case "getPdfEntriesByBlock": {
+              const arr = result as Record<string, unknown>[];
+              return arr.map(fromCandidPdfEntry);
+            }
+
+            default:
+              return result;
+          }
+        },
+        async (actorErr) => {
+          // getRawActor() itself failed - rethrow
+          throw actorErr;
+        },
+      );
   },
 });

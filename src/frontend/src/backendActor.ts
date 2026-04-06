@@ -1,5 +1,10 @@
 import { Actor, HttpAgent } from "@icp-sdk/core/agent";
-import type { PaymentRequest, PdfEntry, backendInterface } from "./backend.d";
+import type {
+  PaymentRequest,
+  PdfEntry,
+  TxCheckResult,
+  backendInterface,
+} from "./backend.d";
 import { createActorWithConfig } from "./config";
 import { idlFactory } from "./declarations/backend.did";
 import type {
@@ -73,6 +78,21 @@ function fromCandidPdfEntry(r: Record<string, unknown>): PdfEntry {
   };
 }
 
+// Convert raw TxCheckResult from Candid (optional fields are [] | [T])
+function fromCandidTxCheckResult(r: Record<string, unknown>): TxCheckResult {
+  const eurAmtOpt = r.eurAmount as [] | [number];
+  const errMsgOpt = r.errorMsg as [] | [string];
+  return {
+    amount: r.amount as string,
+    currency: r.currency as string,
+    timestamp: r.timestamp as string,
+    toAddress: r.toAddress as string,
+    addressMatch: r.addressMatch as boolean,
+    eurAmount: eurAmtOpt.length > 0 ? (eurAmtOpt[0] as number) : null,
+    errorMsg: errMsgOpt.length > 0 ? (errMsgOpt[0] as string) : null,
+  };
+}
+
 // ALL methods that should use the raw actor directly (no processError wrapper)
 const RAW_METHODS = new Set([
   "login",
@@ -93,6 +113,7 @@ const RAW_METHODS = new Set([
   "grantMusterschreibenAccess",
   "revokeMusterschreibenAccess",
   "verifyBTCTransaction",
+  "checkTransaction",
   "addPdfEntry",
   "deletePdfEntry",
   "getPdfEntriesByBlock",
@@ -177,6 +198,19 @@ export const backend: backendInterface = new Proxy({} as backendInterface, {
             if ("confirmed" in v) return { __kind__: "confirmed" };
             if ("pending" in v) return { __kind__: "pending" };
             return { __kind__: "error", error: (v as { error: string }).error };
+          }
+
+          case "checkTransaction": {
+            const r = result as
+              | { ok: Record<string, unknown> }
+              | { error: string };
+            if ("ok" in r) {
+              return {
+                __kind__: "ok",
+                ok: fromCandidTxCheckResult(r.ok),
+              };
+            }
+            return { __kind__: "error", error: (r as { error: string }).error };
           }
 
           case "addPdfEntry":

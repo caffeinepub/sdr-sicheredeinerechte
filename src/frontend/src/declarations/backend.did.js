@@ -37,6 +37,16 @@ const PdfEntry = IDL.Record({
   'uploadedAt' : IDL.Int,
 });
 
+const TxCheckResult = IDL.Record({
+  'amount' : IDL.Text,
+  'currency' : IDL.Text,
+  'timestamp' : IDL.Text,
+  'toAddress' : IDL.Text,
+  'addressMatch' : IDL.Bool,
+  'eurAmount' : IDL.Opt(IDL.Float64),
+  'errorMsg' : IDL.Opt(IDL.Text),
+});
+
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
@@ -138,6 +148,11 @@ export const idlService = IDL.Service({
       [IDL.Variant({ 'confirmed' : IDL.Null, 'pending' : IDL.Null, 'error' : IDL.Text })],
       [],
     ),
+  'checkTransaction' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Variant({ 'ok' : TxCheckResult, 'error' : IDL.Text })],
+      [],
+    ),
   'addPdfEntry' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
       [IDL.Variant({ 'ok' : IDL.Text, 'error' : IDL.Text })],
@@ -190,6 +205,15 @@ export const idlFactory = ({ IDL }) => {
     'filename' : IDL.Text,
     'base64Data' : IDL.Text,
     'uploadedAt' : IDL.Int,
+  });
+  const TxCheckResult = IDL.Record({
+    'amount' : IDL.Text,
+    'currency' : IDL.Text,
+    'timestamp' : IDL.Text,
+    'toAddress' : IDL.Text,
+    'addressMatch' : IDL.Bool,
+    'eurAmount' : IDL.Opt(IDL.Float64),
+    'errorMsg' : IDL.Opt(IDL.Text),
   });
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -290,6 +314,11 @@ export const idlFactory = ({ IDL }) => {
     'verifyBTCTransaction' : IDL.Func(
         [IDL.Text, IDL.Text],
         [IDL.Variant({ 'confirmed' : IDL.Null, 'pending' : IDL.Null, 'error' : IDL.Text })],
+        [],
+      ),
+    'checkTransaction' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Variant({ 'ok' : TxCheckResult, 'error' : IDL.Text })],
         [],
       ),
     'addPdfEntry' : IDL.Func(

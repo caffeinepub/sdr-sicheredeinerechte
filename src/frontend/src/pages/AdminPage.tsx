@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   BookOpen,
   CheckCircle,
   ChevronDown,
@@ -8,6 +9,7 @@ import {
   FileText,
   Loader2,
   LogOut,
+  Search,
   Shield,
   Trash2,
   Upload,
@@ -16,7 +18,7 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import type { PaymentRequest, PdfEntry } from "../backend.d";
+import type { PaymentRequest, PdfEntry, TxCheckResult } from "../backend.d";
 import { backend } from "../backendActor";
 
 const ADMIN_PASSWORD = "WotanClan44!";
@@ -79,6 +81,216 @@ function StatusBadge({ status }: { status: string }) {
     >
       {cfg.label}
     </span>
+  );
+}
+
+function formatTimestamp(unixSecs: string): string {
+  const n = Number.parseInt(unixSecs, 10);
+  if (!n || n === 0) return "Unbekannt";
+  return `${new Date(n * 1000).toLocaleString("de-DE", { timeZone: "UTC" })} UTC`;
+}
+
+function truncateAddress(addr: string): string {
+  if (!addr || addr.length <= 26) return addr;
+  return `${addr.slice(0, 20)}...${addr.slice(-6)}`;
+}
+
+function TxResultPanel({ result }: { result: TxCheckResult }) {
+  const hasData = result.amount && result.amount !== "";
+  const showEur = result.addressMatch && result.eurAmount !== null;
+
+  return (
+    <div
+      className="mt-3 rounded-xl p-4 space-y-3"
+      style={{
+        background: "oklch(0.10 0.025 248)",
+        border: "1px solid oklch(0.27 0.055 248)",
+      }}
+      data-ocid="admin.tx_check.panel"
+    >
+      <p
+        className="text-xs font-semibold uppercase tracking-widest"
+        style={{ color: "oklch(0.72 0.13 218)" }}
+      >
+        Transaktionsdaten
+      </p>
+
+      {/* Pure error — no data at all */}
+      {!hasData && result.errorMsg && (
+        <div
+          className="flex items-start gap-2 rounded-lg px-3 py-2.5"
+          style={{
+            background: "oklch(0.62 0.22 25 / 0.12)",
+            border: "1px solid oklch(0.62 0.22 25 / 0.3)",
+          }}
+          data-ocid="admin.tx_check.error_state"
+        >
+          <XCircle
+            className="w-4 h-4 flex-shrink-0 mt-0.5"
+            style={{ color: "oklch(0.65 0.22 25)" }}
+          />
+          <span className="text-sm" style={{ color: "oklch(0.65 0.22 25)" }}>
+            {result.errorMsg}
+          </span>
+        </div>
+      )}
+
+      {/* Transaction data rows */}
+      {hasData && (
+        <dl className="space-y-1.5">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <dt
+              className="text-xs font-medium min-w-[130px]"
+              style={{ color: "oklch(0.55 0.02 235)" }}
+            >
+              Betrag:
+            </dt>
+            <dd
+              className="text-sm font-semibold"
+              style={{ color: "oklch(0.96 0.015 230)" }}
+            >
+              {result.amount} {result.currency}
+            </dd>
+          </div>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <dt
+              className="text-xs font-medium min-w-[130px]"
+              style={{ color: "oklch(0.55 0.02 235)" }}
+            >
+              Zeitstempel (UTC):
+            </dt>
+            <dd className="text-sm" style={{ color: "oklch(0.82 0.04 230)" }}>
+              {formatTimestamp(result.timestamp)}
+            </dd>
+          </div>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <dt
+              className="text-xs font-medium min-w-[130px]"
+              style={{ color: "oklch(0.55 0.02 235)" }}
+            >
+              Empfangsadresse:
+            </dt>
+            <dd
+              className="text-sm font-mono"
+              style={{ color: "oklch(0.82 0.04 230)" }}
+              title={result.toAddress}
+            >
+              {truncateAddress(result.toAddress)}
+            </dd>
+          </div>
+        </dl>
+      )}
+
+      {/* Address match indicator */}
+      {hasData && (
+        <div>
+          {result.addressMatch ? (
+            <div
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
+              style={{
+                background: "oklch(0.55 0.15 145 / 0.15)",
+                color: "oklch(0.55 0.15 145)",
+                border: "1px solid oklch(0.55 0.15 145 / 0.3)",
+              }}
+              data-ocid="admin.tx_check.success_state"
+            >
+              <CheckCircle className="w-4 h-4" />
+              Empfangsadresse bestätigt
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-2 rounded-lg px-3 py-2.5"
+              style={{
+                background: "oklch(0.62 0.22 25 / 0.15)",
+                border: "2px solid oklch(0.62 0.22 25 / 0.5)",
+              }}
+              data-ocid="admin.tx_check.error_state"
+            >
+              <AlertTriangle
+                className="w-5 h-5 flex-shrink-0"
+                style={{ color: "oklch(0.68 0.22 25)" }}
+              />
+              <span
+                className="font-bold text-base"
+                style={{ color: "oklch(0.68 0.22 25)" }}
+              >
+                Falsche Empfangsadresse!
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Euro amount */}
+      {hasData && result.addressMatch && (
+        <div className="flex items-center gap-3">
+          <span
+            className="text-xs font-medium"
+            style={{ color: "oklch(0.55 0.02 235)" }}
+          >
+            Euro-Betrag:
+          </span>
+          {showEur ? (
+            <span className="flex items-center gap-1.5">
+              <span
+                className="text-sm font-bold"
+                style={{ color: "oklch(0.96 0.015 230)" }}
+              >
+                {(result.eurAmount as number).toLocaleString("de-DE", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                €
+              </span>
+              <span
+                className="text-lg leading-none"
+                style={{
+                  color:
+                    (result.eurAmount as number) > 195
+                      ? "oklch(0.55 0.18 145)"
+                      : "oklch(0.65 0.22 25)",
+                }}
+                title={
+                  (result.eurAmount as number) > 195
+                    ? "Über 195 €"
+                    : "Unter 195 €"
+                }
+              >
+                ●
+              </span>
+            </span>
+          ) : (
+            <span className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
+              nicht verfügbar
+              {result.errorMsg && (
+                <span className="ml-2" style={{ color: "oklch(0.65 0.15 55)" }}>
+                  ({result.errorMsg})
+                </span>
+              )}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Partial success note (has data but also has error) */}
+      {hasData && result.errorMsg && (
+        <div
+          className="flex items-start gap-2 rounded-lg px-3 py-2"
+          style={{
+            background: "oklch(0.72 0.16 55 / 0.1)",
+            border: "1px solid oklch(0.72 0.16 55 / 0.25)",
+          }}
+        >
+          <AlertTriangle
+            className="w-4 h-4 flex-shrink-0 mt-0.5"
+            style={{ color: "oklch(0.75 0.16 55)" }}
+          />
+          <span className="text-xs" style={{ color: "oklch(0.75 0.16 55)" }}>
+            {result.errorMsg}
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -331,6 +543,14 @@ export default function AdminPage() {
   const [showPayments, setShowPayments] = useState(false);
   const [copiedTx, setCopiedTx] = useState("");
 
+  // Transaction check state
+  const [txCheckResults, setTxCheckResults] = useState<
+    Record<string, TxCheckResult | null>
+  >({});
+  const [txCheckLoading, setTxCheckLoading] = useState<Record<string, boolean>>(
+    {},
+  );
+
   // ODT management state
   const [showPdfManagement, setShowPdfManagement] = useState(false);
   const [pdfEntries, setPdfEntries] = useState<PdfEntry[]>([]);
@@ -511,6 +731,53 @@ export default function AdminPage() {
       }
     } catch {
       setPaymentError("Verbindungsfehler.");
+    }
+  };
+
+  const handleCheckTransaction = async (
+    nickname: string,
+    currency: string,
+    txHash: string,
+  ) => {
+    const key = `${nickname}-${txHash}`;
+    setTxCheckLoading((prev) => ({ ...prev, [key]: true }));
+    try {
+      const result = await backend.checkTransaction(
+        ADMIN_PASSWORD,
+        currency,
+        txHash,
+      );
+      if (result.__kind__ === "ok") {
+        setTxCheckResults((prev) => ({ ...prev, [key]: result.ok }));
+      } else {
+        setTxCheckResults((prev) => ({
+          ...prev,
+          [key]: {
+            amount: "",
+            currency,
+            timestamp: "",
+            toAddress: "",
+            addressMatch: false,
+            eurAmount: null,
+            errorMsg: result.error,
+          },
+        }));
+      }
+    } catch {
+      setTxCheckResults((prev) => ({
+        ...prev,
+        [key]: {
+          amount: "",
+          currency,
+          timestamp: "",
+          toAddress: "",
+          addressMatch: false,
+          eurAmount: null,
+          errorMsg: "Verbindungsfehler beim Abrufen der Transaktionsdaten.",
+        },
+      }));
+    } finally {
+      setTxCheckLoading((prev) => ({ ...prev, [key]: false }));
     }
   };
 
@@ -910,119 +1177,166 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {sortedPaymentRequests.map((req, i) => (
-                    <div
-                      key={`${req.nickname}-${i}`}
-                      className="p-5 rounded-xl"
-                      style={{
-                        background: "oklch(0.13 0.025 248)",
-                        border: "1px solid oklch(0.27 0.055 248)",
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="space-y-1 flex-1 min-w-0">
-                          <p
-                            className="font-bold text-base"
-                            style={{ color: "oklch(0.96 0.015 230)" }}
-                          >
-                            {req.nickname}
-                          </p>
-                          <p
-                            className="text-sm"
-                            style={{ color: "oklch(0.73 0.03 235)" }}
-                          >
-                            Kryptowährung: <strong>{req.currency}</strong>
-                          </p>
-                          <div className="flex items-start gap-2 flex-wrap">
-                            <code
-                              className="text-sm font-mono break-all flex-1"
+                  {sortedPaymentRequests.map((req, i) => {
+                    const txKey = `${req.nickname}-${req.txHash}`;
+                    const txResult = txCheckResults[txKey] ?? null;
+                    const txLoading = txCheckLoading[txKey] ?? false;
+
+                    return (
+                      <div
+                        key={`${req.nickname}-${i}`}
+                        className="p-5 rounded-xl"
+                        style={{
+                          background: "oklch(0.13 0.025 248)",
+                          border: "1px solid oklch(0.27 0.055 248)",
+                        }}
+                        data-ocid={`admin.payments.item.${i + 1}`}
+                      >
+                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                          <div className="space-y-1 flex-1 min-w-0">
+                            <p
+                              className="font-bold text-base"
+                              style={{ color: "oklch(0.96 0.015 230)" }}
+                            >
+                              {req.nickname}
+                            </p>
+                            <p
+                              className="text-sm"
                               style={{ color: "oklch(0.73 0.03 235)" }}
                             >
-                              TX-ID: {req.txHash}
-                            </code>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                navigator.clipboard.writeText(req.txHash);
-                                setCopiedTx(`${req.nickname}-${i}`);
-                                setTimeout(() => setCopiedTx(""), 2000);
-                              }}
-                              className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all"
-                              style={{
-                                background:
-                                  copiedTx === `${req.nickname}-${i}`
-                                    ? "oklch(0.55 0.15 145 / 0.15)"
-                                    : "oklch(0.72 0.13 218 / 0.1)",
-                                color:
-                                  copiedTx === `${req.nickname}-${i}`
-                                    ? "oklch(0.55 0.15 145)"
-                                    : "oklch(0.72 0.13 218)",
-                                border: "1px solid oklch(0.72 0.13 218 / 0.2)",
-                              }}
-                            >
-                              <Copy className="w-3 h-3" />
-                              {copiedTx === `${req.nickname}-${i}`
-                                ? "Kopiert ✓"
-                                : "Kopieren"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleGrantAccess(req.nickname)}
-                              className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
-                              style={{
-                                background: "oklch(0.50 0.15 145 / 0.15)",
-                                color: "oklch(0.50 0.15 145)",
-                                border: "1px solid oklch(0.50 0.15 145 / 0.3)",
-                              }}
-                            >
-                              <CheckCircle className="w-3 h-3" />{" "}
-                              Musterschreiben freischalten
-                            </button>
-                          </div>
-                          <p
-                            className="text-sm"
-                            style={{ color: "oklch(0.55 0.02 235)" }}
-                          >
-                            {new Date(
-                              Number(req.submittedAt) / 1_000_000,
-                            ).toLocaleString("de-DE")}
-                          </p>
-                          <StatusBadge status={req.status} />
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {req.status === "pending" && (
-                            <>
+                              Kryptowährung: <strong>{req.currency}</strong>
+                            </p>
+                            <div className="flex items-start gap-2 flex-wrap">
+                              <code
+                                className="text-sm font-mono break-all flex-1"
+                                style={{ color: "oklch(0.73 0.03 235)" }}
+                              >
+                                TX-ID: {req.txHash}
+                              </code>
                               <button
                                 type="button"
-                                onClick={() => handleApprove(req.nickname)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(req.txHash);
+                                  setCopiedTx(`${req.nickname}-${i}`);
+                                  setTimeout(() => setCopiedTx(""), 2000);
+                                }}
+                                className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all"
                                 style={{
-                                  background: "oklch(0.55 0.15 145 / 0.15)",
-                                  color: "oklch(0.55 0.15 145)",
+                                  background:
+                                    copiedTx === `${req.nickname}-${i}`
+                                      ? "oklch(0.55 0.15 145 / 0.15)"
+                                      : "oklch(0.72 0.13 218 / 0.1)",
+                                  color:
+                                    copiedTx === `${req.nickname}-${i}`
+                                      ? "oklch(0.55 0.15 145)"
+                                      : "oklch(0.72 0.13 218)",
                                   border:
-                                    "1px solid oklch(0.55 0.15 145 / 0.3)",
+                                    "1px solid oklch(0.72 0.13 218 / 0.2)",
                                 }}
+                                data-ocid={`admin.payments.item.${i + 1}.secondary_button`}
                               >
-                                <CheckCircle className="w-4 h-4" /> Genehmigen
+                                <Copy className="w-3 h-3" />
+                                {copiedTx === `${req.nickname}-${i}`
+                                  ? "Kopiert ✓"
+                                  : "Kopieren"}
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleReject(req.nickname)}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                onClick={() => handleGrantAccess(req.nickname)}
+                                className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all"
                                 style={{
-                                  background: "oklch(0.62 0.22 25 / 0.12)",
-                                  color: "oklch(0.62 0.22 25)",
-                                  border: "1px solid oklch(0.62 0.22 25 / 0.3)",
+                                  background: "oklch(0.50 0.15 145 / 0.15)",
+                                  color: "oklch(0.50 0.15 145)",
+                                  border:
+                                    "1px solid oklch(0.50 0.15 145 / 0.3)",
                                 }}
+                                data-ocid={`admin.payments.item.${i + 1}.primary_button`}
                               >
-                                <XCircle className="w-4 h-4" /> Ablehnen
+                                <CheckCircle className="w-3 h-3" />{" "}
+                                Musterschreiben freischalten
                               </button>
-                            </>
-                          )}
+                              {/* Transaction check button */}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCheckTransaction(
+                                    req.nickname,
+                                    req.currency,
+                                    req.txHash,
+                                  )
+                                }
+                                disabled={txLoading}
+                                className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                style={{
+                                  background: "oklch(0.72 0.13 218 / 0.12)",
+                                  color: "oklch(0.72 0.13 218)",
+                                  border:
+                                    "1px solid oklch(0.72 0.13 218 / 0.35)",
+                                }}
+                                title="Transaktionsdaten aus der Blockchain abrufen und prüfen"
+                                data-ocid={`admin.payments.item.${i + 1}.button`}
+                              >
+                                {txLoading ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Search className="w-3 h-3" />
+                                )}
+                                Transaktionsdaten abrufen &amp; prüfen
+                              </button>
+                            </div>
+                            <p
+                              className="text-sm"
+                              style={{ color: "oklch(0.55 0.02 235)" }}
+                            >
+                              {new Date(
+                                Number(req.submittedAt) / 1_000_000,
+                              ).toLocaleString("de-DE")}
+                            </p>
+                            <StatusBadge status={req.status} />
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {req.status === "pending" && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleApprove(req.nickname)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                  style={{
+                                    background: "oklch(0.55 0.15 145 / 0.15)",
+                                    color: "oklch(0.55 0.15 145)",
+                                    border:
+                                      "1px solid oklch(0.55 0.15 145 / 0.3)",
+                                  }}
+                                  data-ocid={`admin.payments.item.${i + 1}.confirm_button`}
+                                >
+                                  <CheckCircle className="w-4 h-4" /> Genehmigen
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleReject(req.nickname)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all"
+                                  style={{
+                                    background: "oklch(0.62 0.22 25 / 0.12)",
+                                    color: "oklch(0.62 0.22 25)",
+                                    border:
+                                      "1px solid oklch(0.62 0.22 25 / 0.3)",
+                                  }}
+                                  data-ocid={`admin.payments.item.${i + 1}.delete_button`}
+                                >
+                                  <XCircle className="w-4 h-4" /> Ablehnen
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
+
+                        {/* Transaction check results panel */}
+                        {txResult !== null && (
+                          <TxResultPanel result={txResult} />
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

@@ -8,6 +8,18 @@ export interface CryptoAddress { currency: string; address: string; amount: stri
 export interface PaymentRequest { nickname: string; currency: string; txHash: string; status: string; submittedAt: bigint; }
 // PdfEntry now uses base64Data instead of hash (no external storage canister)
 export interface PdfEntry { id: string; blockId: string; filename: string; base64Data: string; uploadedAt: bigint; }
+
+// Transaction check result returned by checkTransaction
+export interface TxCheckResult {
+  amount: string;
+  currency: string;
+  timestamp: string;    // unix seconds as string
+  toAddress: string;
+  addressMatch: boolean;
+  eurAmount: number | null;   // null if not available
+  errorMsg: string | null;    // null if no error
+}
+
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     getAllProfiles(): Promise<Array<UserProfile>>;
@@ -36,6 +48,8 @@ export interface backendInterface {
     grantMusterschreibenAccess(adminPw: string, nickname: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
     revokeMusterschreibenAccess(adminPw: string, nickname: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;
     verifyBTCTransaction(txHash: string, nickname: string): Promise<{ __kind__: "confirmed"; } | { __kind__: "pending"; } | { __kind__: "error"; error: string; }>;
+    // Transaction check: fetch blockchain data, verify address, calculate EUR amount
+    checkTransaction(adminPw: string, currency: string, txHash: string): Promise<{ __kind__: "ok"; ok: TxCheckResult; } | { __kind__: "error"; error: string; }>;
     // PDF management - stores base64 data directly (no external storage canister)
     addPdfEntry(adminPw: string, blockId: string, filename: string, base64Data: string): Promise<{ __kind__: "ok"; ok: string; } | { __kind__: "error"; error: string; }>;
     deletePdfEntry(adminPw: string, entryId: string): Promise<{ __kind__: "ok"; ok: null; } | { __kind__: "error"; error: string; }>;

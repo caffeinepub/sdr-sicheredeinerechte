@@ -17,6 +17,15 @@ export type UserRole = { 'admin' : null } |
 export interface CryptoAddress { 'currency' : string; 'address' : string; 'amount' : string; }
 export interface PaymentRequestRecord { 'nickname' : string; 'currency' : string; 'txHash' : string; 'status' : string; 'submittedAt' : bigint; }
 export interface PdfEntryRecord { 'id' : string; 'blockId' : string; 'filename' : string; 'base64Data' : string; 'uploadedAt' : bigint; }
+export interface TxCheckResultRecord {
+  'amount' : string;
+  'currency' : string;
+  'timestamp' : string;
+  'toAddress' : string;
+  'addressMatch' : boolean;
+  'eurAmount' : [] | [number];
+  'errorMsg' : [] | [string];
+}
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
@@ -101,6 +110,11 @@ export interface _SERVICE {
     [string, string],
     { 'confirmed' : null } |
       { 'pending' : null } |
+      { 'error' : string }
+  >,
+  'checkTransaction' : ActorMethod<
+    [string, string, string],
+    { 'ok' : TxCheckResultRecord } |
       { 'error' : string }
   >,
   'addPdfEntry' : ActorMethod<

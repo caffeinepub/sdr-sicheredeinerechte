@@ -1,11 +1,13 @@
 import Text "mo:core/Text";
 import Map "mo:core/Map";
-import Iter "mo:core/Iter";
 import Array "mo:core/Array";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
 import Time "mo:core/Time";
 import Int "mo:core/Int";
+import Float "mo:base/Float";
+import Char "mo:base/Char";
+import Nat32 "mo:base/Nat32";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import HttpOutcalls "http-outcalls/outcall";
@@ -20,31 +22,33 @@ actor {
   type CryptoAddress = { currency : Text; address : Text; amount : Text };
   type PaymentRequest = { nickname : Text; currency : Text; txHash : Text; var status : Text; submittedAt : Int };
 
-  // Old type kept for migration compatibility
   type PdfEntryOld = { id : Text; blockId : Text; filename : Text; hash : Text; uploadedAt : Int };
-  // New type stores base64 data directly (no external storage canister)
   type PdfEntry = { id : Text; blockId : Text; filename : Text; base64Data : Text; uploadedAt : Int };
 
-  stable let users = Map.empty<Text, User>();
-  stable let sessions = Map.empty<Text, Session>();
-  stable let userProfiles = Map.empty<Principal, UserProfile>();
+  public type TxCheckResult = {
+    amount : Text;
+    currency : Text;
+    timestamp : Text;
+    toAddress : Text;
+    addressMatch : Bool;
+    eurAmount : ?Float;
+    errorMsg : ?Text;
+  };
+
+  let users = Map.empty<Text, User>();
+  let sessions = Map.empty<Text, Session>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
   stable var visitorCount : Nat = 0;
   let adminPassword : Text = "WotanClan44!";
 
-  stable let activeVisitors = Map.empty<Text, Int>();
-  stable let cryptoAddresses = Map.empty<Text, CryptoAddress>();
-  stable let paymentRequests = Map.empty<Text, PaymentRequest>();
-  stable let musterschreibenAccess = Map.empty<Text, Bool>();
-  // Kept as old type for upgrade compatibility; migrated in-place on first use
-  stable let pdfEntries = Map.empty<Text, PdfEntryOld>();
+  let activeVisitors = Map.empty<Text, Int>();
+  let cryptoAddresses = Map.empty<Text, CryptoAddress>();
+  let paymentRequests = Map.empty<Text, PaymentRequest>();
+  let musterschreibenAccess = Map.empty<Text, Bool>();
+  let pdfEntries = Map.empty<Text, PdfEntryOld>();
   stable var pdfEntryCounter : Nat = 0;
-
-  // Runtime map holding the new type (populated from pdfEntries on demand)
-  // We store new entries here and fall back to pdfEntries for reads
-  stable let pdfEntriesNew = Map.empty<Text, PdfEntry>();
-
-  // Kept as stable to maintain upgrade compatibility with previous versions
-  stable let allowedUsers : [Text] = ["wotan", "Michael"];
+  let pdfEntriesNew = Map.empty<Text, PdfEntry>();
+  let allowedUsers : [Text] = ["wotan", "Michael"];
 
   type HardcodedUser = { nickname : Text; passwordHash : Text };
   let hardcodedCredentials : [HardcodedUser] = [
@@ -66,9 +70,320 @@ actor {
     };
   };
 
-  // Helper: get all PDF entries (new ones only; old hash-based entries are ignored)
   func getAllNewPdfEntries() : [PdfEntry] {
     pdfEntriesNew.values().toArray();
+  };
+
+  // Known receive addresses (must match ZahlungPage.tsx)
+  let knownAddresses : [(Text, Text)] = [
+    ("BTC", "bc1qzt9eeuh35jc9746z0jk73dmj77gd5sp6fuc9wd"),
+    ("ETH", "0x3c2726B86B4BB25Eb39Cd58636b8f8f6a5286ae3"),
+    ("XRP", "rNxb49FgcRQVDjioZ6Jfk6vky5ViByNkW9"),
+    ("SOL", "kjFvmwSexVSufg4wu859rY7SuiqeoThQzPamPef2QLR"),
+    ("ICP", "3pno5-fmoey-3jsyu-6p5qb-6egd7-zg445-sfdtc-3cpzh-qn5sh-wcgx6-cae"),
+  ];
+
+  func getKnownAddress(currency : Text) : ?Text {
+    for ((cur, addr) in knownAddresses.vals()) {
+      if (cur == currency) return ?addr;
+    };
+    switch (cryptoAddresses.get(currency)) {
+      case (?ca) ?ca.address;
+      case (null) null;
+    };
+  };
+
+  func toLower(t : Text) : Text {
+    var result = "";
+    for (c in t.chars()) {
+      let n = Nat32.toNat(Char.toNat32(c));
+      let lc : Char = if (n >= 65 and n <= 90) { Char.fromNat32(Nat32.fromNat(n + 32)) } else { c };
+      result := result # Text.fromChar(lc);
+    };
+    result;
+  };
+
+  func addressMatchesCurrency(currency : Text, toAddr : Text) : Bool {
+    switch (getKnownAddress(currency)) {
+      case (null) false;
+      case (?known) { toLower(known) == toLower(toAddr) };
+    };
+  };
+
+  // Simple JSON field extractor: finds "field": value and returns value as Text
+  func extractJsonField(json : Text, field : Text) : ?Text {
+    let needle = "\"" # field # "\"";
+    let parts = json.split(#text needle).toArray();
+    if (parts.size() < 2) return null;
+    let after = parts[1];
+    // Find colon and extract value after it
+    let colonParts = after.split(#text ":").toArray();
+    if (colonParts.size() < 2) return null;
+    var valueStr = colonParts[1];
+    // trim leading whitespace
+    valueStr := valueStr.trimStart(#predicate(func(c : Char) : Bool { c == ' ' or c == '\t' or c == '\n' or c == '\r' }));
+    if (valueStr.size() == 0) return null;
+    // Check if string value (starts with ")
+    if (valueStr.startsWith(#text "\"")) {
+      let inner = valueStr.trimStart(#text "\"");
+      let strParts = inner.split(#text "\"").toArray();
+      if (strParts.size() > 0) { ?strParts[0] } else { null };
+    } else {
+      // numeric or bool: read until delimiter
+      var numStr = "";
+      for (c in valueStr.chars()) {
+        if (c == ',' or c == '}' or c == ']' or c == '\n' or c == '\r') { /* stop */ }
+        else if (c != ' ') { numStr := numStr # Text.fromChar(c); };
+      };
+      if (numStr == "") null else ?numStr;
+    };
+  };
+
+  func textToFloat(t : Text) : ?Float {
+    var intPart : Float = 0.0;
+    var fracPart : Float = 0.0;
+    var fracDiv : Float = 1.0;
+    var inFrac = false;
+    var negative = false;
+    var valid = false;
+    for (c in t.chars()) {
+      if (c == '-' and not valid and not inFrac) {
+        negative := true;
+      } else if (c == '.') {
+        inFrac := true;
+      } else if (c >= '0' and c <= '9') {
+        valid := true;
+        let d : Float = Float.fromInt(Nat32.toNat(Char.toNat32(c)) - 48);
+        if (inFrac) {
+          fracDiv := fracDiv * 10.0;
+          fracPart := fracPart + d / fracDiv;
+        } else {
+          intPart := intPart * 10.0 + d;
+        };
+      };
+    };
+    if (not valid) return null;
+    let r = intPart + fracPart;
+    ?(if (negative) -r else r);
+  };
+
+  func hexCharVal(c : Char) : Int {
+    let n = Nat32.toNat(Char.toNat32(c));
+    if (n >= 48 and n <= 57) { n - 48 }          // '0'-'9'
+    else if (n >= 97 and n <= 102) { n - 87 }     // 'a'-'f'
+    else if (n >= 65 and n <= 70) { n - 55 }      // 'A'-'F'
+    else 0;
+  };
+
+  func hexToInt(hex : Text) : Int {
+    var h = hex;
+    if (h.startsWith(#text "0x") or h.startsWith(#text "0X")) {
+      let parts = h.split(#text "x").toArray();
+      if (parts.size() >= 2) { h := parts[1] };
+    };
+    var result : Int = 0;
+    for (c in h.chars()) { result := result * 16 + hexCharVal(c); };
+    result;
+  };
+
+  func formatDateForCoinGecko(unixSecs : Int) : Text {
+    let secondsPerDay : Int = 86400;
+    var d = unixSecs / secondsPerDay;
+    var y : Int = 1970;
+    label yearLoop loop {
+      let diy : Int = if ((y % 4 == 0 and y % 100 != 0) or y % 400 == 0) 366 else 365;
+      if (d < diy) break yearLoop;
+      d := d - diy;
+      y := y + 1;
+    };
+    let isLeap = (y % 4 == 0 and y % 100 != 0) or y % 400 == 0;
+    let mdays : [Int] = [31, if (isLeap) 29 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    var m : Int = 1;
+    label monthLoop loop {
+      if (m > 12) break monthLoop;
+      let md = mdays[Int.abs(m - 1)];
+      if (d < md) break monthLoop;
+      d := d - md;
+      m := m + 1;
+    };
+    let day = d + 1;
+    let ds = if (day < 10) "0" # day.toText() else day.toText();
+    let ms2 = if (m < 10) "0" # m.toText() else m.toText();
+    ds # "-" # ms2 # "-" # y.toText();
+  };
+
+  func coinGeckoId(currency : Text) : Text {
+    if (currency == "BTC") "bitcoin"
+    else if (currency == "ETH") "ethereum"
+    else if (currency == "SOL") "solana"
+    else if (currency == "XRP") "ripple"
+    else if (currency == "ICP") "internet-computer"
+    else "bitcoin";
+  };
+
+  type TxData = { amount : Text; timestamp : Text; toAddress : Text };
+
+  func fetchTxData(currency : Text, txHash : Text) : async { #ok : TxData; #error : Text } {
+    try {
+      if (currency == "BTC") {
+        let url = "https://blockchain.info/rawtx/" # txHash;
+        let body = await HttpOutcalls.httpGetRequest(url, [], transform);
+        let toAddr = switch (extractJsonField(body, "addr")) { case (?a) a; case (null) "" };
+        let tsStr = switch (extractJsonField(body, "time")) { case (?t) t; case (null) "0" };
+        let satStr = switch (extractJsonField(body, "value")) { case (?v) v; case (null) "0" };
+        let btcAmt = switch (textToFloat(satStr)) {
+          case (?s) Float.format(#fix 8, s / 100_000_000.0);
+          case (null) satStr;
+        };
+        #ok({ amount = btcAmt; timestamp = tsStr; toAddress = toAddr });
+
+      } else if (currency == "ETH") {
+        let url = "https://api.etherscan.io/api?module=proxy&action=eth_getTransactionByHash&txhash=" # txHash;
+        let body = await HttpOutcalls.httpGetRequest(url, [], transform);
+        let toAddr = switch (extractJsonField(body, "to")) { case (?a) a; case (null) "" };
+        let blockNumHex = switch (extractJsonField(body, "blockNumber")) { case (?b) b; case (null) "0x0" };
+        let valueHex = switch (extractJsonField(body, "value")) { case (?v) v; case (null) "0x0" };
+        let blockUrl = "https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=" # blockNumHex # "&boolean=false";
+        let blockBody = await HttpOutcalls.httpGetRequest(blockUrl, [], transform);
+        let tsHex = switch (extractJsonField(blockBody, "timestamp")) { case (?t) t; case (null) "0x0" };
+        let tsInt = hexToInt(tsHex);
+        let weiFloat = Float.fromInt(hexToInt(valueHex));
+        let ethAmt = Float.format(#fix 8, weiFloat / 1_000_000_000_000_000_000.0);
+        #ok({ amount = ethAmt; timestamp = tsInt.toText(); toAddress = toAddr });
+
+      } else if (currency == "XRP") {
+        let url = "https://api.xrpscan.com/api/v1/tx/" # txHash;
+        let body = await HttpOutcalls.httpGetRequest(url, [], transform);
+        let toAddr = switch (extractJsonField(body, "Destination")) {
+          case (?a) a;
+          case (null) { switch (extractJsonField(body, "destination")) { case (?a) a; case (null) "" }; };
+        };
+        let dateField = switch (extractJsonField(body, "date")) { case (?d) d; case (null) "0" };
+        let rippleEpoch : Int = 946684800;
+        let xrpTs : Int = switch (Int.fromText(dateField)) {
+          case (?d) d + rippleEpoch;
+          case (null) 0;
+        };
+        let amtField = switch (extractJsonField(body, "Amount")) {
+          case (?a) a;
+          case (null) { switch (extractJsonField(body, "amount")) { case (?a) a; case (null) "0" }; };
+        };
+        let xrpAmt = switch (textToFloat(amtField)) {
+          case (?drops) Float.format(#fix 6, drops / 1_000_000.0);
+          case (null) amtField;
+        };
+        #ok({ amount = xrpAmt; timestamp = xrpTs.toText(); toAddress = toAddr });
+
+      } else if (currency == "SOL") {
+        let url = "https://api.mainnet-beta.solana.com";
+        let reqBody = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTransaction\",\"params\":[\"" # txHash # "\",{\"encoding\":\"json\",\"maxSupportedTransactionVersion\":0}]}";
+        let solHeaders : [HttpOutcalls.Header] = [{ name = "Content-Type"; value = "application/json" }];
+        let body = await HttpOutcalls.httpPostRequest(url, solHeaders, reqBody, transform);
+        let toAddr = switch (extractJsonField(body, "destination")) {
+          case (?a) a;
+          case (null) { switch (extractJsonField(body, "toUserAccount")) { case (?a) a; case (null) "" }; };
+        };
+        let blockTime = switch (extractJsonField(body, "blockTime")) { case (?t) t; case (null) "0" };
+        let lamportStr = switch (extractJsonField(body, "lamports")) { case (?l) l; case (null) "0" };
+        let solAmt = switch (textToFloat(lamportStr)) {
+          case (?l) Float.format(#fix 9, l / 1_000_000_000.0);
+          case (null) lamportStr;
+        };
+        #ok({ amount = solAmt; timestamp = blockTime; toAddress = toAddr });
+
+      } else if (currency == "ICP") {
+        let searchUrl = "https://rosetta-api.internetcomputer.org/search/transactions";
+        let reqBody = "{\"network_identifier\":{\"blockchain\":\"Internet Computer\",\"network\":\"00000000000000020101\"},\"transaction_identifier\":{\"hash\":\"" # txHash # "\"}}";
+        let icpHeaders : [HttpOutcalls.Header] = [{ name = "Content-Type"; value = "application/json" }];
+        let body = await HttpOutcalls.httpPostRequest(searchUrl, icpHeaders, reqBody, transform);
+        let toAddr = switch (extractJsonField(body, "address")) { case (?a) a; case (null) "" };
+        let tsMs = switch (extractJsonField(body, "timestamp")) { case (?t) t; case (null) "0" };
+        let tsSec : Int = switch (Int.fromText(tsMs)) {
+          case (?t) t / 1000;
+          case (null) 0;
+        };
+        let amtStr = switch (extractJsonField(body, "value")) { case (?v) v; case (null) "0" };
+        let icpAmt = switch (textToFloat(amtStr)) {
+          case (?e8s) Float.format(#fix 8, e8s / 100_000_000.0);
+          case (null) amtStr;
+        };
+        #ok({ amount = icpAmt; timestamp = tsSec.toText(); toAddress = toAddr });
+
+      } else {
+        #error("Unbekannte Kryptow\u{E4}hrung");
+      };
+    } catch (_) {
+      #error("API-Fehler beim Abrufen der Transaktionsdaten");
+    };
+  };
+
+  public shared ({ caller }) func checkTransaction(
+    adminPw : Text,
+    currency : Text,
+    txHash : Text
+  ) : async { #ok : TxCheckResult; #error : Text } {
+    if (adminPw != adminPassword) return #error("Unauthorized");
+
+    let txResult = await fetchTxData(currency, txHash);
+    switch (txResult) {
+      case (#error(e)) {
+        return #ok({
+          amount = "";
+          currency;
+          timestamp = "";
+          toAddress = "";
+          addressMatch = false;
+          eurAmount = null;
+          errorMsg = ?("Transaktion nicht gefunden: " # e);
+        });
+      };
+      case (#ok(txData)) {
+        let addrMatch = addressMatchesCurrency(currency, txData.toAddress);
+
+        if (not addrMatch) {
+          return #ok({
+            amount = txData.amount;
+            currency;
+            timestamp = txData.timestamp;
+            toAddress = txData.toAddress;
+            addressMatch = false;
+            eurAmount = null;
+            errorMsg = ?("Falsche Empfangsadresse!");
+          });
+        };
+
+        let unixSecs : Int = switch (Int.fromText(txData.timestamp)) {
+          case (?s) s;
+          case (null) 0;
+        };
+        let dateStr = if (unixSecs > 0) formatDateForCoinGecko(unixSecs) else "01-01-2024";
+        let cgId = coinGeckoId(currency);
+        let cgUrl = "https://api.coingecko.com/api/v3/coins/" # cgId # "/history?date=" # dateStr # "&localization=false";
+
+        let eurRate : ?Float = try {
+          let cgResp = await HttpOutcalls.httpGetRequest(cgUrl, [], transform);
+          switch (extractJsonField(cgResp, "eur")) {
+            case (null) null;
+            case (?rStr) textToFloat(rStr);
+          };
+        } catch (_) { null };
+
+        let eurAmount : ?Float = switch (eurRate, textToFloat(txData.amount)) {
+          case (?rate, ?amt) ?(rate * amt);
+          case _ null;
+        };
+
+        #ok({
+          amount = txData.amount;
+          currency;
+          timestamp = txData.timestamp;
+          toAddress = txData.toAddress;
+          addressMatch = true;
+          eurAmount;
+          errorMsg = if (eurAmount == null) ?("Historischer Kurs nicht verf\u{FC}gbar") else null;
+        });
+      };
+    };
   };
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile { userProfiles.get(caller) };
@@ -215,7 +530,6 @@ actor {
     #ok;
   };
 
-  // ODT management - stores base64 data directly in backend (no external storage canister)
   public shared ({ caller }) func addPdfEntry(adminPw : Text, blockId : Text, filename : Text, base64Data : Text) : async { #ok : Text; #error : Text } {
     if (adminPw != adminPassword) return #error("Unauthorized");
     pdfEntryCounter += 1;

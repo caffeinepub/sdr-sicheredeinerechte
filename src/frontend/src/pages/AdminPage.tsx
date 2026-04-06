@@ -97,7 +97,7 @@ function truncateAddress(addr: string): string {
 
 function TxResultPanel({ result }: { result: TxCheckResult }) {
   const hasData = result.amount && result.amount !== "";
-  const showEur = result.addressMatch && result.eurAmount !== null;
+  const showEur = result.eurAmount !== null && result.eurAmount !== undefined;
 
   return (
     <div
@@ -221,8 +221,8 @@ function TxResultPanel({ result }: { result: TxCheckResult }) {
         </div>
       )}
 
-      {/* Euro amount */}
-      {hasData && result.addressMatch && (
+      {/* Euro amount - show always when we have data, even if address mismatch */}
+      {hasData && (
         <div className="flex items-center gap-3">
           <span
             className="text-xs font-medium"

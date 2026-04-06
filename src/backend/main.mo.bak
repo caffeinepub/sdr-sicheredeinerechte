@@ -103,17 +103,10 @@ actor {
     result;
   };
 
-  func trimAddr(t : Text) : Text {
-    t.trim(#predicate(func(c : Char) : Bool {
-      let n = Nat32.toNat(Char.toNat32(c));
-      c == ' ' or n == 9 or n == 10 or n == 13
-    }));
-  };
-
   func addressMatchesCurrency(currency : Text, toAddr : Text) : Bool {
     switch (getKnownAddress(currency)) {
       case (null) false;
-      case (?known) { toLower(trimAddr(known)) == toLower(trimAddr(toAddr)) };
+      case (?known) { toLower(known) == toLower(toAddr) };
     };
   };
 
@@ -434,6 +427,18 @@ actor {
       case (#ok(txData)) {
         let addrMatch = addressMatchesCurrency(currency, txData.toAddress);
 
+        if (not addrMatch) {
+          return #ok({
+            amount = txData.amount;
+            currency;
+            timestamp = txData.timestamp;
+            toAddress = txData.toAddress;
+            addressMatch = false;
+            eurAmount = null;
+            errorMsg = ?("Falsche Empfangsadresse!");
+          });
+        };
+
         let unixSecs : Int = switch (Int.fromText(txData.timestamp)) {
           case (?s) s;
           case (null) 0;
@@ -455,19 +460,14 @@ actor {
           case _ null;
         };
 
-        let errorNote : ?Text =
-          if (not addrMatch) ?("Falsche Empfangsadresse!")
-          else if (eurAmount == null) ?("Historischer Kurs nicht verf\u{FC}gbar")
-          else null;
-
         #ok({
           amount = txData.amount;
           currency;
           timestamp = txData.timestamp;
           toAddress = txData.toAddress;
-          addressMatch = addrMatch;
-          eurAmount = if (addrMatch) eurAmount else null;
-          errorMsg = errorNote;
+          addressMatch = true;
+          eurAmount;
+          errorMsg = if (eurAmount == null) ?("Historischer Kurs nicht verf\u{FC}gbar") else null;
         });
       };
     };

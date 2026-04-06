@@ -33,6 +33,27 @@ const PDF_BLOCKS = [
   },
 ];
 
+// Known receive addresses - must match ZahlungPage.tsx and backend knownAddresses
+const KNOWN_ADDRESSES: Record<string, string> = {
+  ICP: "a34140f39e2ee1a1cbea4485e921060ab9b9f2afe5e595711516f665a0c6c326",
+  BTC: "bc1qzt9eeuh35jc9746z0jk73dmj77gd5sp6fuc9wd",
+  ETH: "0x3c2726B86B4BB25Eb39Cd58636b8f8f6a5286ae3",
+  XRP: "rNxb49FgcRQVDjioZ6Jfk6vky5ViByNkW9",
+  SOL: "kjFvmwSexVSufg4wu859rY7SuiqeoThQzPamPef2QLR",
+};
+
+// Frontend address match - case-insensitive, trim whitespace + quotes
+function isAddressMatch(currency: string, toAddress: string): boolean {
+  const known = KNOWN_ADDRESSES[currency];
+  if (!known || !toAddress) return false;
+  const normalize = (s: string) =>
+    s
+      .trim()
+      .replace(/['"\\]/g, "")
+      .toLowerCase();
+  return normalize(known) === normalize(toAddress);
+}
+
 // Convert a File to a base64 string (no data URL prefix)
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -84,20 +105,54 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function formatTimestamp(unixSecs: string): string {
-  const n = Number.parseInt(unixSecs, 10);
-  if (!n || n === 0) return "Unbekannt";
-  return `${new Date(n * 1000).toLocaleString("de-DE", { timeZone: "UTC" })} UTC`;
-}
-
 function truncateAddress(addr: string): string {
   if (!addr || addr.length <= 26) return addr;
   return `${addr.slice(0, 20)}...${addr.slice(-6)}`;
 }
 
-function TxResultPanel({ result }: { result: TxCheckResult }) {
+function TxResultPanel({
+  result,
+  currency,
+}: { result: TxCheckResult; currency: string }) {
   const hasData = result.amount && result.amount !== "";
-  const showEur = result.eurAmount !== null && result.eurAmount !== undefined;
+
+  // Use frontend address match as the authoritative check.
+  // The backend addressMatch can be wrong due to JSON parsing artifacts.
+  // Frontend has direct access to the canonical address list.
+  const frontendMatch = result.toAddress
+    ? isAddressMatch(currency, result.toAddress)
+    : result.addressMatch;
+
+  // eurAmount: prefer the value from backend; unwrap ICP optional array format if needed
+  const rawEur = result.eurAmount;
+  // Candid Opt(Float64) comes as [] | [number] - unwrap it
+  const eurValue: number | null = Array.isArray(rawEur)
+    ? rawEur.length > 0
+      ? rawEur[0]
+      : null
+    : rawEur !== null && rawEur !== undefined
+      ? (rawEur as number)
+      : null;
+
+  const showEur = eurValue !== null;
+
+  // Timestamp: show if we have data even if it's "0" - try to parse robustly
+  const tsDisplay = (() => {
+    if (
+      !result.timestamp ||
+      result.timestamp === "" ||
+      result.timestamp === "0"
+    ) {
+      return "Unbekannt";
+    }
+    const n = Number.parseInt(result.timestamp, 10);
+    if (!n || Number.isNaN(n) || n <= 0) return "Unbekannt";
+    // Sanity check: unix seconds should be > 2010-01-01 (1262304000) and < 2100
+    if (n > 1262304000 && n < 4102444800) {
+      return `${new Date(n * 1000).toLocaleString("de-DE", { timeZone: "UTC" })} UTC`;
+    }
+    return "Unbekannt";
+  })();
 
   return (
     <div
@@ -160,7 +215,7 @@ function TxResultPanel({ result }: { result: TxCheckResult }) {
               Zeitstempel (UTC):
             </dt>
             <dd className="text-sm" style={{ color: "oklch(0.82 0.04 230)" }}>
-              {formatTimestamp(result.timestamp)}
+              {tsDisplay}
             </dd>
           </div>
           <div className="flex items-baseline gap-2 flex-wrap">
@@ -181,10 +236,10 @@ function TxResultPanel({ result }: { result: TxCheckResult }) {
         </dl>
       )}
 
-      {/* Address match indicator */}
+      {/* Address match indicator — uses frontend verification */}
       {hasData && (
         <div>
-          {result.addressMatch ? (
+          {frontendMatch ? (
             <div
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
               style={{
@@ -221,7 +276,7 @@ function TxResultPanel({ result }: { result: TxCheckResult }) {
         </div>
       )}
 
-      {/* Euro amount - show always when we have data, even if address mismatch */}
+      {/* Euro amount — always shown when available */}
       {hasData && (
         <div className="flex items-center gap-3">
           <span
@@ -236,7 +291,7 @@ function TxResultPanel({ result }: { result: TxCheckResult }) {
                 className="text-sm font-bold"
                 style={{ color: "oklch(0.96 0.015 230)" }}
               >
-                {(result.eurAmount as number).toLocaleString("de-DE", {
+                {eurValue!.toLocaleString("de-DE", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}{" "}
@@ -246,15 +301,11 @@ function TxResultPanel({ result }: { result: TxCheckResult }) {
                 className="text-lg leading-none"
                 style={{
                   color:
-                    (result.eurAmount as number) > 195
+                    eurValue! > 195
                       ? "oklch(0.55 0.18 145)"
                       : "oklch(0.65 0.22 25)",
                 }}
-                title={
-                  (result.eurAmount as number) > 195
-                    ? "Über 195 €"
-                    : "Unter 195 €"
-                }
+                title={eurValue! > 195 ? "Über 195 €" : "Unter 195 €"}
               >
                 ●
               </span>
@@ -262,23 +313,18 @@ function TxResultPanel({ result }: { result: TxCheckResult }) {
           ) : (
             <span className="text-sm" style={{ color: "oklch(0.55 0.02 235)" }}>
               nicht verfügbar
-              {result.errorMsg && (
-                <span className="ml-2" style={{ color: "oklch(0.65 0.15 55)" }}>
-                  ({result.errorMsg})
-                </span>
-              )}
             </span>
           )}
         </div>
       )}
 
-      {/* Partial success note (has data but also has error) */}
-      {hasData && result.errorMsg && (
+      {/* Partial warning note (address mismatch or course unavailable) */}
+      {hasData && !frontendMatch && result.toAddress && (
         <div
           className="flex items-start gap-2 rounded-lg px-3 py-2"
           style={{
-            background: "oklch(0.72 0.16 55 / 0.1)",
-            border: "1px solid oklch(0.72 0.16 55 / 0.25)",
+            background: "oklch(0.62 0.22 25 / 0.08)",
+            border: "1px solid oklch(0.62 0.22 25 / 0.25)",
           }}
         >
           <AlertTriangle
@@ -286,7 +332,26 @@ function TxResultPanel({ result }: { result: TxCheckResult }) {
             style={{ color: "oklch(0.75 0.16 55)" }}
           />
           <span className="text-xs" style={{ color: "oklch(0.75 0.16 55)" }}>
-            {result.errorMsg}
+            Die abgerufene Empfangsadresse stimmt nicht mit den hinterlegten
+            Adressen überein.
+          </span>
+        </div>
+      )}
+      {hasData && frontendMatch && !showEur && (
+        <div
+          className="flex items-start gap-2 rounded-lg px-3 py-2"
+          style={{
+            background: "oklch(0.72 0.16 55 / 0.08)",
+            border: "1px solid oklch(0.72 0.16 55 / 0.2)",
+          }}
+        >
+          <AlertTriangle
+            className="w-4 h-4 flex-shrink-0 mt-0.5"
+            style={{ color: "oklch(0.75 0.16 55)" }}
+          />
+          <span className="text-xs" style={{ color: "oklch(0.75 0.16 55)" }}>
+            Historischer Kurs nicht verfügbar – Euro-Betrag kann nicht berechnet
+            werden.
           </span>
         </div>
       )}
@@ -1332,7 +1397,10 @@ export default function AdminPage() {
 
                         {/* Transaction check results panel */}
                         {txResult !== null && (
-                          <TxResultPanel result={txResult} />
+                          <TxResultPanel
+                            result={txResult}
+                            currency={req.currency}
+                          />
                         )}
                       </div>
                     );

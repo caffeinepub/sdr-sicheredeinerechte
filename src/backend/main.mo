@@ -104,9 +104,10 @@ actor {
   };
 
   func trimAddr(t : Text) : Text {
+    // Strip whitespace AND quotes (ASCII 34=double-quote, 39=single-quote, 92=backslash)
     t.trim(#predicate(func(c : Char) : Bool {
       let n = Nat32.toNat(Char.toNat32(c));
-      c == ' ' or n == 9 or n == 10 or n == 13
+      c == ' ' or n == 9 or n == 10 or n == 13 or n == 34 or n == 39 or n == 92
     }));
   };
 
@@ -455,6 +456,8 @@ actor {
           case _ null;
         };
 
+        // Always return eurAmount and timestamp regardless of address match
+        // Frontend will display warning if address doesn't match
         let errorNote : ?Text =
           if (not addrMatch) ?("Falsche Empfangsadresse!")
           else if (eurAmount == null) ?("Historischer Kurs nicht verf\u{FC}gbar")
@@ -466,7 +469,7 @@ actor {
           timestamp = txData.timestamp;
           toAddress = txData.toAddress;
           addressMatch = addrMatch;
-          eurAmount = if (addrMatch) eurAmount else null;
+          eurAmount = eurAmount;  // Always return eurAmount, even if address doesn't match
           errorMsg = errorNote;
         });
       };
